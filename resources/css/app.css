@@ -1,0 +1,8 @@
+@import 'tailwindcss';
+
+@source '../**/*.blade.php';
+@source '../**/*.{ts,tsx}';
+
+@theme {
+    --font-sans: ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji';
+}

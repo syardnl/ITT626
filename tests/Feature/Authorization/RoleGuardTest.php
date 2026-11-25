@@ -1,0 +1,68 @@
+<?php
+
+use App\Enums\Role;
+use App\Models\User;
+use Illuminate\Database\UniqueConstraintViolationException;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Route;
+
+beforeEach(function () {
+    // Stand-in endpoints behind exactly the middleware stack real /api/v1 routes use.
+    Route::middleware(['api', 'auth:sanctum', 'active', 'role:administrator'])
+        ->get('/api/v1/__probe/administrator-only', fn () => ['ok' => true]);
+    Route::middleware(['api', 'auth:sanctum', 'active', 'role:manager,administrator'])
+        ->get('/api/v1/__probe/staff-office', fn () => ['ok' => true]);
+});
+
+it('lets through only the roles an endpoint names', function (string $uri, array $allowed) {
+    foreach (Role::cases() as $role) {
+        $response = $this->actingAs(account($role))->getJson($uri);
+
+        in_array($role, $allowed, true)
+            ? $response->assertOk()
+            : $response->assertForbidden()->assertExactJson(['message' => 'This action is unauthorized.']);
+    }
+})->with([
+    'administrator only' => ['/api/v1/__probe/administrator-only', [Role::Administrator]],
+    'manager or administrator' => ['/api/v1/__probe/staff-office', [Role::Manager, Role::Administrator]],
+]);
+
+it('answers 401, not 403, to anyone not signed in', function () {
+    $this->getJson('/api/v1/__probe/administrator-only')->assertUnauthorized();
+});
+
+it('denies an account that somehow holds no role', function () {
+    $user = User::factory()->create();
+
+    $this->actingAs($user)->getJson('/api/v1/__probe/staff-office')->assertForbidden();
+    $this->actingAs($user)->getJson('/api/v1/me')->assertForbidden();
+});
+
+it('makes every signed-in API route declare which roles may call it', function () {
+    $undeclared = collect(Route::getRoutes()->getRoutes())
+        ->filter(fn ($route) => str_starts_with($route->uri(), 'api/v1/'))
+        ->filter(fn ($route) => in_array('auth:sanctum', $route->gatherMiddleware(), true))
+        ->reject(fn ($route) => collect($route->gatherMiddleware())->contains(fn ($m) => is_string($m) && str_starts_with($m, 'role:')))
+        ->map(fn ($route) => implode('|', $route->methods()).' '.$route->uri())
+        ->values()
+        ->all();
+
+    expect($undeclared)->toBe([]);
+});
+
+it('holds exactly one role per account: a new role replaces the old one', function () {
+    $user = account(Role::Manager);
+    $user->assignRole(Role::Administrator);
+
+    $this->actingAs($user)->getJson('/api/v1/me')->assertJsonPath('data.role', 'administrator');
+    $this->getJson('/api/v1/__probe/administrator-only')->assertOk();
+    expect(DB::table('role_user')->where('user_id', $user->id)->count())->toBe(1);
+});
+
+it('refuses, at the database, to store a second role for an account', function () {
+    $user = account(Role::Manager);
+    $administrator = DB::table('roles')->where('name', 'administrator')->value('id');
+
+    expect(fn () => DB::table('role_user')->insert(['user_id' => $user->id, 'role_id' => $administrator]))
+        ->toThrow(UniqueConstraintViolationException::class);
+});

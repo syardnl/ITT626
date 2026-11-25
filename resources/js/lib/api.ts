@@ -152,3 +152,32 @@ export function formatMinutes(total: number): string {
     ].filter(Boolean);
     return parts.length ? parts.join(' ') : '0 min';
 }
+
+export type ResidentType = 'owner' | 'tenant' | 'student';
+
+export const roleLabel: Record<Role, string> = {
+    resident: 'Resident',
+    manager: 'Manager',
+    technician: 'Technician',
+    administrator: 'Administrator',
+};
+
+export const residentTypeLabel: Record<ResidentType, string> = {
+    owner: 'Owner',
+    tenant: 'Tenant',
+    student: 'Student',
+};
+
+/** An account as the Administrator endpoints return it. */
+export interface AdminUser {
+    id: number;
+    name: string;
+    email: string;
+    role: Role;
+    resident_type: ResidentType | null;
+    unit: { id: number; code: string; name: string } | null;
+    active: boolean;
+    /** False while the set-password link is still outstanding. */
+    password_set: boolean;
+    created_at: string;
+}

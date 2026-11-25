@@ -5,6 +5,7 @@ use App\Http\Controllers\Api\Admin\CategoryController as AdminCategoryController
 use App\Http\Controllers\Api\Admin\LocationController as AdminLocationController;
 use App\Http\Controllers\Api\Admin\SkillController;
 use App\Http\Controllers\Api\Admin\SlaRuleController;
+use App\Http\Controllers\Api\Admin\UserController as AdminUserController;
 use App\Http\Controllers\Api\Auth\PasswordController;
 use App\Http\Controllers\Api\Auth\SessionController;
 use App\Http\Controllers\Api\CategoryController;
@@ -32,6 +33,10 @@ Route::middleware(['auth:sanctum', 'active'])->group(function () {
 
     Route::middleware('role:administrator')->prefix('admin')->group(function () {
         Route::get('/audit-logs', [AuditLogController::class, 'index']);
+        Route::get('/users', [AdminUserController::class, 'index']);
+        Route::post('/users', [AdminUserController::class, 'store']);
+        Route::patch('/users/{user}', [AdminUserController::class, 'update']);
+        Route::post('/users/{user}/resend-invite', [AdminUserController::class, 'resendInvite']);
         Route::get('/locations', [AdminLocationController::class, 'index']);
         Route::post('/locations', [AdminLocationController::class, 'store']);
         Route::patch('/locations/{location}', [AdminLocationController::class, 'update']);

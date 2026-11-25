@@ -20,6 +20,7 @@ const actions: Record<string, string> = {
     'auth.signed_in': 'Signed in',
     'auth.sign_in_failed': 'Failed sign-in',
     'auth.password_set': 'Password set',
+    'account.invite_sent': 'Set-password link sent',
     created: 'Created',
     updated: 'Updated',
     deactivated: 'Deactivated',

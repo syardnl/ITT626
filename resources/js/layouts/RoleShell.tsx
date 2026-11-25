@@ -1,14 +1,7 @@
 import type { ReactNode } from 'react';
 import { Navigate, NavLink, Outlet } from 'react-router';
-import type { Role } from '../lib/api';
+import { roleLabel, type Role } from '../lib/api';
 import { landingPath, useAuth } from '../lib/auth';
-
-const roleLabel: Record<Role, string> = {
-    resident: 'Resident',
-    manager: 'Manager',
-    technician: 'Technician',
-    administrator: 'Administrator',
-};
 
 /** Section links per role; each later ticket adds its screens here. */
 const navigation: Record<Role, { to: string; label: string }[]> = {
@@ -17,6 +10,7 @@ const navigation: Record<Role, { to: string; label: string }[]> = {
     technician: [],
     administrator: [
         { to: '/admin', label: 'Home' },
+        { to: '/admin/users', label: 'Accounts' },
         { to: '/admin/locations', label: 'Locations' },
         { to: '/admin/categories', label: 'Categories' },
         { to: '/admin/sla-targets', label: 'SLA Targets' },

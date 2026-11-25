@@ -38,8 +38,9 @@ class AuditTrail
     /**
      * Record what just happened to a saved model: on Created every attribute, otherwise
      * only the fields that the last save changed, each as ['from' => …, 'to' => …].
+     * $alsoChanged adds changes kept outside the model's own columns (e.g. a role).
      */
-    public function recordChange(AuditAction $action, Model $target, array $metadata = []): AuditLog
+    public function recordChange(AuditAction $action, Model $target, array $metadata = [], array $alsoChanged = []): AuditLog
     {
         $ignored = [$target->getKeyName(), $target->getCreatedAtColumn(), $target->getUpdatedAtColumn()];
 
@@ -59,7 +60,7 @@ class AuditTrail
             ];
         }
 
-        return $this->record($action, $target, $changes, $metadata);
+        return $this->record($action, $target, [...$changes, ...$alsoChanged], $metadata);
     }
 
     /** Short name used as target_type, e.g. App\Models\Location => "location". */

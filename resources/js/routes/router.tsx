@@ -2,6 +2,7 @@ import { createBrowserRouter, Navigate } from 'react-router';
 import { ChoosePasswordPage } from '../features/auth/ChoosePasswordPage';
 import { ForgotPasswordPage } from '../features/auth/ForgotPasswordPage';
 import { SignInPage } from '../features/auth/SignInPage';
+import { AccountsPage } from '../features/admin/AccountsPage';
 import { AdministratorLandingPage } from '../features/admin/AdministratorLandingPage';
 import { AuditLogPage } from '../features/admin/AuditLogPage';
 import { CategoriesPage } from '../features/admin/CategoriesPage';
@@ -31,6 +32,7 @@ export const router = createBrowserRouter([
     { path: '/technician', element: <RoleShell role="technician" />, children: [{ index: true, element: <TechnicianLandingPage /> }] },
     { path: '/admin', element: <RoleShell role="administrator" />, children: [
         { index: true, element: <AdministratorLandingPage /> },
+        { path: 'users', element: <AccountsPage /> },
         { path: 'locations', element: <LocationsPage /> },
         { path: 'categories', element: <CategoriesPage /> },
         { path: 'sla-targets', element: <SlaTargetsPage /> },

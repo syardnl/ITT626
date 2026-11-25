@@ -4,7 +4,7 @@ ITT626 Back-End Technology project. Laravel 12 JSON API under `/api/v1` and a Re
 
 ## Requirements
 
-PHP 8.4 (with `pdo_mysql`), Composer, MariaDB 11.8, Node.js current LTS (`nvm use` reads `.nvmrc`; Vite 7 will not run on old Node).
+PHP 8.4 (with `pdo_mysql`), Composer, MariaDB 11.8, Node.js current LTS (`nvm use` reads `.nvmrc`; Vite 7 will not run on old Node), and [Mailpit](https://mailpit.axllent.org/) for local email.
 
 ## Setup
 
@@ -18,6 +18,8 @@ composer setup   # install, .env, key, migrate + reference seed, build the SPA
 composer demo    # local only: one account per role
 composer dev     # server, queue worker, logs and Vite
 ```
+
+Run `mailpit` in another terminal to catch outgoing email; its inbox is at <http://127.0.0.1:8025>. Password links are sent through the queue, so `composer dev` (which runs the queue worker) must be running too. Don't switch `MAIL_MAILER` to `log`: it would write password links into `storage/logs` in plain text.
 
 Open <http://127.0.0.1:8000>. Demo accounts (password `demo-password`): `resident@demo.test`, `manager@demo.test`, `technician@demo.test`, `administrator@demo.test`.
 

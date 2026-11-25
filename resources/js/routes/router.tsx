@@ -1,4 +1,6 @@
 import { createBrowserRouter, Navigate } from 'react-router';
+import { ChoosePasswordPage } from '../features/auth/ChoosePasswordPage';
+import { ForgotPasswordPage } from '../features/auth/ForgotPasswordPage';
 import { SignInPage } from '../features/auth/SignInPage';
 import { AdministratorLandingPage } from '../features/admin/AdministratorLandingPage';
 import { ManagerLandingPage } from '../features/manager/ManagerLandingPage';
@@ -16,6 +18,10 @@ function Home() {
 export const router = createBrowserRouter([
     { path: '/', element: <Home /> },
     { path: '/login', element: <SignInPage /> },
+    // /reset-password and /set-password must match PasswordTokenPurpose::spaPath() on the server.
+    { path: '/forgot-password', element: <ForgotPasswordPage /> },
+    { path: '/reset-password', element: <ChoosePasswordPage purpose="reset" /> },
+    { path: '/set-password', element: <ChoosePasswordPage purpose="setPassword" /> },
     { path: '/resident', element: <RoleShell role="resident" />, children: [{ index: true, element: <ResidentLandingPage /> }] },
     { path: '/manager', element: <RoleShell role="manager" />, children: [{ index: true, element: <ManagerLandingPage /> }] },
     { path: '/technician', element: <RoleShell role="technician" />, children: [{ index: true, element: <TechnicianLandingPage /> }] },

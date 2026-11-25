@@ -7,9 +7,11 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
 /*
-| Feature tests exercise the system only through the /api/v1 HTTP API.
-| Requests carry the SPA's Origin so Sanctum treats them as first-party
-| (stateful, session-cookie) requests, exactly as the browser would.
+| Feature tests drive the system through the /api/v1 HTTP API and assert on
+| responses and on what was persisted. They set up state with factories and
+| seeders, and call a service directly only when no endpoint exists yet to
+| trigger the behaviour (say so in the test). Requests carry the SPA's Origin
+| so Sanctum treats them as first-party session-cookie requests, as a browser would.
 */
 pest()->extend(TestCase::class)
     ->use(RefreshDatabase::class)

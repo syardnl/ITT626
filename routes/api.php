@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Api\Auth\PasswordController;
 use App\Http\Controllers\Api\Auth\SessionController;
 use App\Http\Controllers\Api\MeController;
 use Illuminate\Support\Facades\Route;
@@ -11,6 +12,8 @@ use Illuminate\Support\Facades\Route;
 */
 
 Route::post('/auth/login', [SessionController::class, 'store']);
+Route::post('/auth/forgot-password', [PasswordController::class, 'forgot']);
+Route::post('/auth/reset-password', [PasswordController::class, 'reset']);
 
 Route::middleware(['auth:sanctum', 'active'])->group(function () {
     Route::middleware('role:resident,manager,technician,administrator')->group(function () {

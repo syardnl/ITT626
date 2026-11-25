@@ -17,6 +17,7 @@ const navigation: Record<Role, { to: string; label: string }[]> = {
     technician: [],
     administrator: [
         { to: '/admin', label: 'Home' },
+        { to: '/admin/locations', label: 'Locations' },
         { to: '/admin/audit-logs', label: 'Audit log' },
     ],
 };

@@ -18,6 +18,8 @@ const navigation: Record<Role, { to: string; label: string }[]> = {
     administrator: [
         { to: '/admin', label: 'Home' },
         { to: '/admin/locations', label: 'Locations' },
+        { to: '/admin/categories', label: 'Categories' },
+        { to: '/admin/sla-targets', label: 'SLA Targets' },
         { to: '/admin/audit-logs', label: 'Audit log' },
     ],
 };

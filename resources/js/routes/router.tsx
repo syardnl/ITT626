@@ -4,7 +4,9 @@ import { ForgotPasswordPage } from '../features/auth/ForgotPasswordPage';
 import { SignInPage } from '../features/auth/SignInPage';
 import { AdministratorLandingPage } from '../features/admin/AdministratorLandingPage';
 import { AuditLogPage } from '../features/admin/AuditLogPage';
+import { CategoriesPage } from '../features/admin/CategoriesPage';
 import { LocationsPage } from '../features/admin/LocationsPage';
+import { SlaTargetsPage } from '../features/admin/SlaTargetsPage';
 import { ManagerLandingPage } from '../features/manager/ManagerLandingPage';
 import { ResidentLandingPage } from '../features/resident/ResidentLandingPage';
 import { TechnicianLandingPage } from '../features/technician/TechnicianLandingPage';
@@ -30,6 +32,8 @@ export const router = createBrowserRouter([
     { path: '/admin', element: <RoleShell role="administrator" />, children: [
         { index: true, element: <AdministratorLandingPage /> },
         { path: 'locations', element: <LocationsPage /> },
+        { path: 'categories', element: <CategoriesPage /> },
+        { path: 'sla-targets', element: <SlaTargetsPage /> },
         { path: 'audit-logs', element: <AuditLogPage /> },
     ] },
     { path: '*', element: <Home /> },

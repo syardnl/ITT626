@@ -21,7 +21,64 @@ it('can be re-run without duplicating reference data', function () {
     $this->seed(ReferenceSeeder::class);
     $this->seed(ReferenceSeeder::class);
 
-    expect(Property::count())->toBe(1)->and(DB::table('roles')->count())->toBe(4);
+    expect(Property::count())->toBe(1)->and(DB::table('roles')->count())->toBe(4)
+        ->and(DB::table('complaint_categories')->count())->toBe(10)
+        ->and(DB::table('skills')->count())->toBe(10)
+        ->and(DB::table('sla_rules')->count())->toBe(4);
+});
+
+it('seeds the ten Categories with their default priorities, each with one Skill of the same name', function () {
+    $this->seed(DatabaseSeeder::class);
+    $this->actingAs(account(Role::Administrator));
+
+    $categories = collect($this->getJson('/api/v1/admin/categories')->json('data'))->keyBy('name');
+
+    expect($categories->map(fn ($c) => $c['default_priority'])->sortKeys()->all())->toBe([
+        'Common Facilities' => 'low',
+        'Electrical' => 'high',
+        'Fire & Safety' => 'critical',
+        'Landscaping & Cleaning' => 'low',
+        'Lift' => 'high',
+        'Lighting' => 'medium',
+        'Plumbing & Water Supply' => 'high',
+        'Sanitation & Waste' => 'medium',
+        'Security & Access' => 'high',
+        'Structural & Building' => 'medium',
+    ])->and($categories->every(fn ($c) => $c['active'] && $c['skill']['name'] === $c['name'] && $c['skill']['active']))->toBeTrue()
+        ->and($this->getJson('/api/v1/admin/skills')->json('data'))->toHaveCount(10);
+});
+
+it('seeds the four SLA Targets with the agreed minutes', function () {
+    $this->seed(DatabaseSeeder::class);
+    $this->actingAs(account(Role::Administrator));
+
+    $rules = collect($this->getJson('/api/v1/admin/sla-rules')->json('data'))
+        ->map(fn ($r) => [$r['priority'], $r['response_minutes'], $r['resolution_minutes'], $r['version']])->all();
+
+    expect($rules)->toBe([
+        ['critical', 60, 480, 1],
+        ['high', 240, 1440, 1],
+        ['medium', 1440, 4320, 1],
+        ['low', 4320, 10080, 1],
+    ]);
+});
+
+it('keeps the Administrator\'s edits when the reference seed is re-run', function () {
+    $this->actingAs(account(Role::Administrator));
+    $lift = collect($this->getJson('/api/v1/admin/categories')->json('data'))->firstWhere('name', 'Lift');
+    $high = collect($this->getJson('/api/v1/admin/sla-rules')->json('data'))->firstWhere('priority', 'high');
+    $this->patchJson("/api/v1/admin/categories/{$lift['id']}", ['name' => 'Lifts', 'active' => false])->assertOk();
+    $this->patchJson("/api/v1/admin/sla-rules/{$high['id']}", ['response_minutes' => 120])->assertOk();
+
+    $this->seed(ReferenceSeeder::class);
+
+    $categories = collect($this->getJson('/api/v1/admin/categories')->json('data'));
+    expect($categories)->toHaveCount(10)
+        ->and($categories->pluck('name'))->toContain('Lifts')->not->toContain('Lift')
+        ->and($categories->firstWhere('name', 'Lifts')['active'])->toBeFalse()
+        ->and($this->getJson('/api/v1/admin/skills')->json('data'))->toHaveCount(10)
+        ->and(collect($this->getJson('/api/v1/admin/sla-rules')->json('data'))->firstWhere('priority', 'high'))
+        ->toMatchArray(['response_minutes' => 120, 'version' => 2]);
 });
 
 it('creates one active demo account per role that can sign in', function (Role $role, string $email) {

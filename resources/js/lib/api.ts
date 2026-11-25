@@ -101,3 +101,54 @@ export const childTypesUnder: Record<LocationType | 'property', LocationType[]> 
     unit: [],
     common_area: [],
 };
+
+export type Priority = 'critical' | 'high' | 'medium' | 'low';
+
+/** Most urgent first, matching App\Enums\Priority on the server. */
+export const priorities: Priority[] = ['critical', 'high', 'medium', 'low'];
+
+export const priorityLabel: Record<Priority, string> = {
+    critical: 'Critical',
+    high: 'High',
+    medium: 'Medium',
+    low: 'Low',
+};
+
+export interface Skill {
+    id: number;
+    category_id: number;
+    name: string;
+    active: boolean;
+}
+
+export interface Category {
+    id: number;
+    name: string;
+    default_priority: Priority;
+    active: boolean;
+    /** Present on the Administrator endpoints only. */
+    skill?: Skill;
+}
+
+/** An SLA Target: minutes allowed for Response and Resolution at one Priority. */
+export interface SlaRule {
+    id: number;
+    priority: Priority;
+    response_minutes: number;
+    resolution_minutes: number;
+    version: number;
+    updated_at: string | null;
+}
+
+/** 90 → "1 h 30 min", 4320 → "3 days". */
+export function formatMinutes(total: number): string {
+    const days = Math.floor(total / 1440);
+    const hours = Math.floor((total % 1440) / 60);
+    const minutes = total % 60;
+    const parts = [
+        days && `${days} ${days === 1 ? 'day' : 'days'}`,
+        hours && `${hours} h`,
+        minutes && `${minutes} min`,
+    ].filter(Boolean);
+    return parts.length ? parts.join(' ') : '0 min';
+}

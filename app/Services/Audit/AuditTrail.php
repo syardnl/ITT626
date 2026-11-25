@@ -46,9 +46,17 @@ class AuditTrail
         $after = $action === AuditAction::Created ? $target->getAttributes() : $target->getChanges();
         $before = $action === AuditAction::Created ? [] : $target->getPrevious();
 
+        // Read both sides through the model's casts, so booleans, enums and dates
+        // are recorded alike whether they came from the database or from PHP.
+        $old = $target->newInstance()->setRawAttributes($before);
+        $new = $target->newInstance()->setRawAttributes($target->getAttributes());
+
         $changes = [];
-        foreach (array_diff_key($after, array_flip($ignored)) as $field => $value) {
-            $changes[$field] = ['from' => $before[$field] ?? null, 'to' => $value];
+        foreach (array_keys(array_diff_key($after, array_flip($ignored))) as $field) {
+            $changes[$field] = [
+                'from' => array_key_exists($field, $before) ? $old->getAttribute($field) : null,
+                'to' => $new->getAttribute($field),
+            ];
         }
 
         return $this->record($action, $target, $changes, $metadata);

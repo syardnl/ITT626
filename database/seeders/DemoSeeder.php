@@ -11,8 +11,9 @@ use Illuminate\Database\Seeder;
 use RuntimeException;
 
 /**
- * Local demonstration data only: one active account per role, all with the
- * password "demo-password". Run with `php artisan db:seed --class=DemoSeeder`.
+ * Local demonstration data only: the sample Location tree and one active account
+ * per role, all with the password "demo-password".
+ * Run with `php artisan db:seed --class=DemoSeeder`.
  */
 class DemoSeeder extends Seeder
 {
@@ -26,22 +27,13 @@ class DemoSeeder extends Seeder
 
         $this->call(ReferenceSeeder::class);
 
-        $property = Property::current();
-        $unit = $this->sampleUnit($property);
+        $this->call(DemoLocationSeeder::class);
+        $unit = Location::where('code', 'A-01-01')->firstOrFail();
 
         $this->account(Role::Resident, 'Rina Resident', ['unit_id' => $unit->id, 'resident_type' => ResidentType::Tenant]);
         $this->account(Role::Manager, 'Mariam Manager');
         $this->account(Role::Technician, 'Tariq Technician');
         $this->account(Role::Administrator, 'Adam Administrator');
-    }
-
-    /** Just enough of the Location tree to give the demo Resident a home. */
-    private function sampleUnit(Property $property): Location
-    {
-        $block = Location::firstOrCreate(['code' => 'A'], ['property_id' => $property->id, 'type' => 'block', 'name' => 'Block A']);
-        $floor = Location::firstOrCreate(['code' => 'A-01'], ['property_id' => $property->id, 'parent_id' => $block->id, 'type' => 'floor', 'name' => 'Block A, Floor 1']);
-
-        return Location::firstOrCreate(['code' => 'A-01-01'], ['property_id' => $property->id, 'parent_id' => $floor->id, 'type' => 'unit', 'name' => 'Unit A-01-01']);
     }
 
     private function account(Role $role, string $name, array $attributes = []): void

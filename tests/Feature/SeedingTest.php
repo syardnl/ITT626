@@ -57,3 +57,42 @@ it('refuses to create demo accounts in production', function () {
     expect(fn () => app(DemoSeeder::class)->run())->toThrow(RuntimeException::class);
     expect(User::count())->toBe(0);
 });
+
+/** Flatten the /locations tree into code => node. */
+function treeByCode(array $nodes, array $into = []): array
+{
+    foreach ($nodes as $node) {
+        $into[$node['code']] = $node;
+        $into = treeByCode($node['children'], $into);
+    }
+
+    return $into;
+}
+
+it('seeds a sample Location tree with the agreed importance defaults', function () {
+    $this->seed(DemoSeeder::class);
+    $this->postJson('/api/v1/auth/login', ['email' => 'resident@demo.test', 'password' => 'demo-password']);
+
+    $tree = $this->getJson('/api/v1/locations')->assertOk()->json('data');
+    $byCode = treeByCode($tree);
+    $count = fn (string $type) => collect($byCode)->where('type', $type)->count();
+
+    expect($count('block'))->toBeGreaterThanOrEqual(2)
+        ->and($count('floor'))->toBeGreaterThanOrEqual(4)
+        ->and($count('unit'))->toBeGreaterThanOrEqual(8)
+        ->and($count('common_area'))->toBeGreaterThanOrEqual(8);
+
+    $importanceOf = fn (string $pattern) => collect($byCode)
+        ->filter(fn ($node) => $node['type'] === 'common_area' && preg_match($pattern, $node['name']))
+        ->pluck('importance')->unique()->values()->all();
+
+    expect($importanceOf('/lift/i'))->toBe(['essential'])
+        ->and($importanceOf('/water tank|pump/i'))->toBe(['essential'])
+        ->and($importanceOf('/main switch room/i'))->toBe(['essential'])
+        ->and($importanceOf('/guardhouse/i'))->toBe(['essential'])
+        ->and($importanceOf('/lobby/i'))->toBe(['important'])
+        ->and($importanceOf('/car park/i'))->toBe(['important'])
+        ->and($importanceOf('/stairwell/i'))->toBe(['important'])
+        ->and(collect($byCode)->where('type', 'unit')->pluck('importance')->unique()->all())->toBe(['normal'])
+        ->and(collect($byCode)->where('is_shared_area', true)->count())->toBeGreaterThanOrEqual(3);
+});

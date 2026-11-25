@@ -66,3 +66,38 @@ export function formatDateTime(utc: string): string {
         timeZone: propertyTimeZone,
     }).format(new Date(utc));
 }
+
+export type LocationType = 'block' | 'floor' | 'unit' | 'common_area';
+export type LocationImportance = 'normal' | 'important' | 'essential';
+
+/** A Location as the Administrator endpoints return it. */
+export interface AdminLocation {
+    id: number;
+    type: LocationType;
+    code: string;
+    name: string;
+    parent_id: number | null;
+    importance: LocationImportance;
+    is_shared_area: boolean;
+    active: boolean;
+    children_count?: number;
+}
+
+export const locationTypeLabel: Record<LocationType, string> = {
+    block: 'Block',
+    floor: 'Floor',
+    unit: 'Unit',
+    common_area: 'Common Area',
+};
+
+/**
+ * What may be added under each kind of node ("property" is the root). Mirrors
+ * App\Enums\LocationType::allowedParents() on the server, which has the final say.
+ */
+export const childTypesUnder: Record<LocationType | 'property', LocationType[]> = {
+    property: ['block', 'common_area'],
+    block: ['floor', 'common_area'],
+    floor: ['unit', 'common_area'],
+    unit: [],
+    common_area: [],
+};

@@ -2,10 +2,12 @@
 
 namespace App\Services\Auth;
 
+use App\Enums\AuditAction;
 use App\Enums\PasswordTokenPurpose;
 use App\Models\PasswordToken;
 use App\Models\User;
 use App\Notifications\PasswordLink;
+use App\Services\Audit\AuditTrail;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 
@@ -15,6 +17,8 @@ use Illuminate\Support\Str;
  */
 class PasswordLinks
 {
+    public function __construct(private readonly AuditTrail $audit) {}
+
     /** Issue a fresh link (superseding any unused one) and queue it to the account holder. */
     public function send(User $user, PasswordTokenPurpose $purpose): void
     {
@@ -52,6 +56,14 @@ class PasswordLinks
 
             $record->update(['used_at' => now()]);
             $record->user->forceFill(['password' => $password, 'remember_token' => Str::random(60)])->save();
+
+            $this->audit->record(
+                AuditAction::PasswordSet,
+                $record->user,
+                changes: ['password' => true],
+                metadata: ['link' => $record->purpose->value],
+                actor: $record->user,
+            );
 
             return true;
         });

@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Api\Admin\AuditLogController;
 use App\Http\Controllers\Api\Auth\PasswordController;
 use App\Http\Controllers\Api\Auth\SessionController;
 use App\Http\Controllers\Api\MeController;
@@ -19,5 +20,9 @@ Route::middleware(['auth:sanctum', 'active'])->group(function () {
     Route::middleware('role:resident,manager,technician,administrator')->group(function () {
         Route::post('/auth/logout', [SessionController::class, 'destroy']);
         Route::get('/me', MeController::class);
+    });
+
+    Route::middleware('role:administrator')->prefix('admin')->group(function () {
+        Route::get('/audit-logs', [AuditLogController::class, 'index']);
     });
 });

@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import { Navigate, Outlet } from 'react-router';
+import { Navigate, NavLink, Outlet } from 'react-router';
 import type { Role } from '../lib/api';
 import { landingPath, useAuth } from '../lib/auth';
 
@@ -10,7 +10,18 @@ const roleLabel: Record<Role, string> = {
     administrator: 'Administrator',
 };
 
-/** Guards a section of the SPA for one role and frames it with a header and sign-out. */
+/** Section links per role; each later ticket adds its screens here. */
+const navigation: Record<Role, { to: string; label: string }[]> = {
+    resident: [],
+    manager: [],
+    technician: [],
+    administrator: [
+        { to: '/admin', label: 'Home' },
+        { to: '/admin/audit-logs', label: 'Audit log' },
+    ],
+};
+
+/** Guards a section of the SPA for one role and frames it with a header, navigation and sign-out. */
 export function RoleShell({ role }: { role: Role }) {
     const { account, loading, signOut } = useAuth();
 
@@ -18,23 +29,43 @@ export function RoleShell({ role }: { role: Role }) {
     if (!account) return <Navigate to="/login" replace />;
     if (account.role !== role) return <Navigate to={landingPath[account.role]} replace />;
 
+    const links = navigation[role];
+
     return (
         <div className="min-h-screen">
-            <header className="flex items-center justify-between border-b border-slate-200 bg-white px-4 py-3">
-                <div>
-                    <p className="font-semibold">Apartment Maintenance</p>
-                    <p className="text-sm text-slate-600">
-                        {account.name} · {roleLabel[account.role]}
-                    </p>
+            <header className="border-b border-slate-200 bg-white">
+                <div className="flex items-center justify-between px-4 py-3">
+                    <div>
+                        <p className="font-semibold">Apartment Maintenance</p>
+                        <p className="text-sm text-slate-600">
+                            {account.name} · {roleLabel[account.role]}
+                        </p>
+                    </div>
+                    <button
+                        type="button" onClick={() => void signOut()}
+                        className="min-h-11 rounded-md border border-slate-300 px-4 text-sm font-medium hover:bg-slate-100 focus:outline-2 focus:outline-blue-600"
+                    >
+                        Sign out
+                    </button>
                 </div>
-                <button
-                    type="button" onClick={() => void signOut()}
-                    className="min-h-11 rounded-md border border-slate-300 px-4 text-sm font-medium hover:bg-slate-100 focus:outline-2 focus:outline-blue-600"
-                >
-                    Sign out
-                </button>
+                {links.length > 0 && (
+                    <nav aria-label="Sections" className="flex gap-1 overflow-x-auto px-2">
+                        {links.map((link) => (
+                            <NavLink
+                                key={link.to} to={link.to} end
+                                className={({ isActive }) =>
+                                    `inline-flex min-h-11 items-center border-b-2 px-3 text-sm font-medium focus:outline-2 focus:outline-blue-600 ${
+                                        isActive ? 'border-blue-700 text-blue-800' : 'border-transparent text-slate-600 hover:text-slate-900'
+                                    }`
+                                }
+                            >
+                                {link.label}
+                            </NavLink>
+                        ))}
+                    </nav>
+                )}
             </header>
-            <main className="mx-auto max-w-5xl p-4 md:p-8">
+            <main className="mx-auto max-w-6xl p-4 md:p-8">
                 <Outlet />
             </main>
         </div>

@@ -47,3 +47,22 @@ export async function ensureCsrfCookie(): Promise<void> {
         await axios.get('/sanctum/csrf-cookie', { withCredentials: true });
     }
 }
+
+/** Laravel's paginated resource collection shape. */
+export interface Paginated<T> {
+    data: T[];
+    meta: { current_page: number; last_page: number; per_page: number; total: number };
+}
+
+/** The Property's timezone, published by the server in the page shell. */
+export const propertyTimeZone: string =
+    document.querySelector<HTMLMetaElement>('meta[name="property-timezone"]')?.content || 'Asia/Kuala_Lumpur';
+
+/** Timestamps arrive in UTC; people read them in the Property's timezone. */
+export function formatDateTime(utc: string): string {
+    return new Intl.DateTimeFormat('en-MY', {
+        dateStyle: 'medium',
+        timeStyle: 'short',
+        timeZone: propertyTimeZone,
+    }).format(new Date(utc));
+}

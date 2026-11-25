@@ -2,6 +2,10 @@
 
 namespace App\Http\Requests\Auth;
 
+use App\Enums\AuditAction;
+use App\Models\User;
+use App\Services\Audit\AuditTrail;
+use Illuminate\Contracts\Validation\Validator;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Http\Exceptions\ThrottleRequestsException;
 use Illuminate\Support\Facades\Auth;
@@ -39,8 +43,12 @@ class SignInRequest extends FormRequest
                 RateLimiter::hit($key, self::DECAY_SECONDS);
             }
 
+            $this->recordFailure();
+
             throw ValidationException::withMessages(['email' => 'These credentials are invalid.']);
         }
+
+        app(AuditTrail::class)->record(AuditAction::SignedIn, $this->user(), actor: $this->user());
 
         // Only the account's counter resets; the IP counter keeps running so one
         // good account cannot be used to keep guessing at others.
@@ -51,6 +59,7 @@ class SignInRequest extends FormRequest
     {
         foreach ($this->throttleKeys() as $key) {
             if (RateLimiter::tooManyAttempts($key, self::MAX_FAILURES)) {
+                $this->recordFailure('throttled');
                 $seconds = RateLimiter::availableIn($key);
 
                 throw new ThrottleRequestsException(
@@ -59,6 +68,26 @@ class SignInRequest extends FormRequest
                 );
             }
         }
+    }
+
+    /** Malformed attempts (missing or invalid email/password) are failed sign-ins too. */
+    protected function failedValidation(Validator $validator): void
+    {
+        $this->recordFailure('invalid_request');
+
+        parent::failedValidation($validator);
+    }
+
+    /** Audit a failed attempt: the email as typed (if any) and the account it names, never the password. */
+    private function recordFailure(?string $reason = null): void
+    {
+        $email = is_string($this->input('email')) && $this->input('email') !== '' ? $this->input('email') : null;
+
+        app(AuditTrail::class)->record(
+            AuditAction::SignInFailed,
+            $email ? User::query()->where('email', $email)->first() : null,
+            metadata: array_filter(['email' => $email, 'reason' => $reason]),
+        );
     }
 
     /** @return array{account: string, ip: string} */

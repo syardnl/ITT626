@@ -345,3 +345,12 @@ export async function setFollowing(complaintId: number, follow: boolean): Promis
     await ensureCsrfCookie();
     await (follow ? api.post(`/complaints/${complaintId}/follow`) : api.delete(`/complaints/${complaintId}/follow`));
 }
+
+/**
+ * A fresh Idempotency-Key for one Report Complaint form: 32 hex characters. Uses getRandomValues,
+ * not randomUUID, because a phone opening the app over plain http on the local network is not a
+ * secure context and has no randomUUID.
+ */
+export function newSubmissionKey(): string {
+    return Array.from(crypto.getRandomValues(new Uint8Array(16)), (byte) => byte.toString(16).padStart(2, '0')).join('');
+}

@@ -4,7 +4,7 @@ import { Alert } from '../../components/Alert';
 import { SubmitButton } from '../../components/SubmitButton';
 import { inputClassName, TextField } from '../../components/TextField';
 import {
-    affectedUnitsLabel, api, ensureCsrfCookie, toApiError, urgencyHint, urgencyLabel,
+    affectedUnitsLabel, api, ensureCsrfCookie, newSubmissionKey, toApiError, urgencyHint, urgencyLabel,
     type AffectedUnits, type ApiError, type Category, type ComplaintDetail, type LocationNode, type Urgency,
 } from '../../lib/api';
 import { useAuth } from '../../lib/auth';
@@ -42,6 +42,9 @@ export function ReportComplaintPage() {
     const [affectedUnits, setAffectedUnits] = useState<AffectedUnits>('one');
     const [serviceDown, setServiceDown] = useState(false);
     const [photos, setPhotos] = useState<File[]>([]);
+    // One key for this form: every retry of it (after a timeout or a validation error) reuses it,
+    // so a submission that reached the server but lost its answer is not filed twice.
+    const [submissionKey] = useState(newSubmissionKey);
 
     const [busy, setBusy] = useState(false);
     const [error, setError] = useState<ApiError | null>(null);
@@ -91,7 +94,9 @@ export function ReportComplaintPage() {
             form.append('essential_service_down', serviceDown ? '1' : '0');
             photos.forEach((photo) => form.append('photos[]', photo));
 
-            const response = await api.post<{ data: ComplaintDetail }>('/complaints', form);
+            const response = await api.post<{ data: ComplaintDetail }>('/complaints', form, {
+                headers: { 'Idempotency-Key': submissionKey },
+            });
             navigate(`/resident/complaints/${response.data.data.id}`, { state: { justReported: response.data.data.reference_no } });
         } catch (caught) {
             setError(toApiError(caught));

@@ -214,3 +214,84 @@ export interface TechnicianFormOptions {
     skills: { id: number; name: string }[];
     blocks: { id: number; code: string; name: string }[];
 }
+
+/** A node of the active Location tree (GET /locations). */
+export interface LocationNode {
+    id: number;
+    type: LocationType;
+    code: string;
+    name: string;
+    importance: LocationImportance;
+    is_shared_area: boolean;
+    children: LocationNode[];
+}
+
+export type ComplaintStatus =
+    | 'reported' | 'under_review' | 'assigned' | 'in_progress'
+    | 'pending_verification' | 'resolved' | 'returned' | 'closed';
+
+/** The case-study status names (design §5). */
+export const complaintStatusLabel: Record<ComplaintStatus, string> = {
+    reported: 'Reported',
+    under_review: 'Under Review',
+    assigned: 'Assigned',
+    in_progress: 'In Progress',
+    pending_verification: 'Pending Verification',
+    resolved: 'Resolved',
+    returned: 'Returned',
+    closed: 'Closed',
+};
+
+export type Urgency = 'low' | 'medium' | 'high' | 'critical';
+export type AffectedUnits = 'one' | 'several' | 'many';
+
+/** Shown under each Urgency choice on the Report form. */
+export const urgencyHint: Record<Urgency, string> = {
+    low: 'An inconvenience that can wait a few days.',
+    medium: 'Needs fixing soon, but daily life goes on.',
+    high: 'Seriously disrupts daily life.',
+    critical: 'Cannot wait: needs attention right away.',
+};
+
+export const urgencyLabel: Record<Urgency, string> = { low: 'Low', medium: 'Medium', high: 'High', critical: 'Critical' };
+
+export const affectedUnitsLabel: Record<AffectedUnits, string> = {
+    one: 'Just one Unit',
+    several: 'Several Units (2–10)',
+    many: 'Many Units (more than 10, or a whole Block)',
+};
+
+/** A Complaint as a list shows it. */
+export interface Complaint {
+    id: number;
+    reference_no: string;
+    title: string;
+    status: ComplaintStatus;
+    priority: Priority;
+    safety_risk: boolean;
+    category: { id: number; name: string } | null;
+    location: { id: number; code: string; name: string; type: LocationType };
+    created_at: string;
+}
+
+export interface StatusTimelineEntry {
+    type: 'status';
+    from_status: ComplaintStatus | null;
+    to_status: ComplaintStatus;
+    reason: string | null;
+    actor: { id: number; name: string } | null;
+    at: string;
+}
+
+/** A Complaint as its reporter opens it (GET /complaints/{id}). */
+export interface ComplaintDetail extends Complaint {
+    description: string;
+    urgency: Urgency;
+    affected_units: AffectedUnits;
+    essential_service_down: boolean;
+    priority_score: number;
+    priority_breakdown: Record<'urgency' | 'safety_risk' | 'affected_units' | 'location_importance' | 'essential_service', number>;
+    priority_rule_version: number;
+    initial_priority: Priority;
+    timeline: StatusTimelineEntry[];
+}

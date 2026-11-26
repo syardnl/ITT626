@@ -9,6 +9,7 @@ use App\Http\Controllers\Api\Admin\UserController as AdminUserController;
 use App\Http\Controllers\Api\Auth\PasswordController;
 use App\Http\Controllers\Api\Auth\SessionController;
 use App\Http\Controllers\Api\CategoryController;
+use App\Http\Controllers\Api\ComplaintCommentController;
 use App\Http\Controllers\Api\ComplaintController;
 use App\Http\Controllers\Api\ComplaintFollowController;
 use App\Http\Controllers\Api\EvidenceController;
@@ -44,6 +45,8 @@ Route::middleware(['auth:sanctum', 'active'])->group(function () {
         Route::post('/complaints/{complaint}/follow', [ComplaintFollowController::class, 'store'])->whereNumber('complaint');
         Route::delete('/complaints/{complaint}/follow', [ComplaintFollowController::class, 'destroy'])->whereNumber('complaint');
     });
+    Route::middleware('role:resident,manager')
+        ->post('/complaints/{complaint}/comments', [ComplaintCommentController::class, 'store'])->whereNumber('complaint');
     Route::middleware('role:resident,manager')
         ->get('/locations/{location}/open-complaints', OpenComplaintsController::class)->whereNumber('location');
 

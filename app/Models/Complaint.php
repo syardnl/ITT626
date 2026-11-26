@@ -60,6 +60,11 @@ class Complaint extends Model
         return $this->hasMany(StatusChange::class)->orderBy('created_at')->orderBy('id');
     }
 
+    public function comments(): HasMany
+    {
+        return $this->hasMany(Comment::class)->orderBy('created_at')->orderBy('id');
+    }
+
     public function evidence(): HasMany
     {
         return $this->hasMany(Evidence::class)->orderBy('id');

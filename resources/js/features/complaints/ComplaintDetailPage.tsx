@@ -5,12 +5,16 @@ import {
     affectedUnitsLabel, api, categoryName, complaintStatusLabel, formatDateTime, isFullComplaint, priorityLabel, setFollowing, toApiError, urgencyLabel,
     type ComplaintDetail, type ComplaintSummary,
 } from '../../lib/api';
+import { useAuth } from '../../lib/auth';
+import { ComplaintTimeline } from './ComplaintTimeline';
 
 export function ComplaintDetailPage() {
     const { id } = useParams();
     const justReported = (useLocation().state as { justReported?: string } | null)?.justReported;
     const [complaint, setComplaint] = useState<ComplaintDetail | ComplaintSummary | null>(null);
     const [error, setError] = useState<string | null>(null);
+    // A Resident who sees the full Complaint is its reporter; Followers get the summary instead.
+    const { account } = useAuth();
 
     useEffect(() => {
         api.get<{ data: ComplaintDetail | ComplaintSummary }>(`/complaints/${id}`)
@@ -79,18 +83,12 @@ export function ComplaintDetailPage() {
                 </section>
             )}
 
-            <section>
-                <h2 className="text-lg font-semibold">Timeline</h2>
-                <ol className="mt-2 space-y-3 border-l-2 border-slate-200 pl-4">
-                    {complaint.timeline.map((entry, index) => (
-                        <li key={index}>
-                            <p className="font-medium">{complaintStatusLabel[entry.to_status]}</p>
-                            <p className="text-sm text-slate-600">{formatDateTime(entry.at)}{entry.actor && ` · ${entry.actor.name}`}</p>
-                            {entry.reason && <p className="text-sm">{entry.reason}</p>}
-                        </li>
-                    ))}
-                </ol>
-            </section>
+            <ComplaintTimeline
+                complaintId={complaint.id}
+                timeline={complaint.timeline}
+                commenting={complaint.status === 'closed' ? null : account?.role === 'manager' ? 'manager' : account?.role === 'resident' ? 'reporter' : null}
+                onCommented={(entry) => setComplaint({ ...complaint, timeline: [...complaint.timeline, entry] })}
+            />
         </article>
     );
 }

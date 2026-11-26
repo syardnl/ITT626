@@ -149,10 +149,10 @@ Photos attached to a Complaint: up to five by the Resident at submission, and be
 _Avoid_: Attachment, upload, proof
 
 **Public Comment**:
-A comment on a Complaint visible to its reporter, the Manager and the assigned Technician.
+A comment on a Complaint visible to its reporter, the Manager, the assigned Technician and Administrators (who read but do not post comments).
 
 **Internal Comment**:
-A comment on a Complaint visible only to the Manager and the assigned Technician, never to Residents.
+A comment on a Complaint visible only to the Manager, the assigned Technician and Administrators (read-only), never to Residents.
 _Avoid_: Private note, staff note
 
 **Management Report**:

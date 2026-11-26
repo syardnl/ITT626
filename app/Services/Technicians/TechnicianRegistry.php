@@ -25,7 +25,7 @@ class TechnicianRegistry
                 'skill_ids' => ['from' => null, 'to' => $this->skillIds($technician)],
             ]);
 
-            return $this->fresh($technician);
+            return $this->reloadForDisplay($technician);
         });
     }
 
@@ -53,7 +53,7 @@ class TechnicianRegistry
                 $this->audit->recordChange(AuditAction::Updated, $technician, alsoChanged: $skillChange);
             }
 
-            return $this->fresh($technician);
+            return $this->reloadForDisplay($technician);
         });
     }
 
@@ -62,8 +62,8 @@ class TechnicianRegistry
         return $technician->skills()->pluck('skills.id')->sort()->values()->all();
     }
 
-    private function fresh(Technician $technician): Technician
+    private function reloadForDisplay(Technician $technician): Technician
     {
-        return $technician->refresh()->load(['user', 'skills', 'homeBlock']);
+        return $technician->refresh()->load(Technician::DISPLAY_RELATIONS);
     }
 }

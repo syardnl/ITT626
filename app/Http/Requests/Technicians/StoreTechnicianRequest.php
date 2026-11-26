@@ -15,11 +15,8 @@ class StoreTechnicianRequest extends FormRequest
 
     public function rules(): array
     {
-        $required = array_map(fn (array $rules) => ['required', ...$rules], $this->profileRules());
-        $required['skill_ids.*'] = $this->profileRules()['skill_ids.*'];
-
         return [
-            ...$required,
+            ...$this->profileRules('required'),
             'user_id' => ['required', 'integer', $this->technicianAccount(), Rule::unique('technicians', 'user_id')],
             'company_name' => $this->input('type') === TechnicianType::Contractor->value
                 ? ['required', ...$this->companyNameRules()]

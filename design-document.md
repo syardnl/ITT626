@@ -440,7 +440,9 @@ Base URL `/api/v1`. JSON responses unless multipart upload or file download. Aut
 | POST | `/reports/ai-summary` | Queue management summary | M |
 | GET | `/reports/ai-accuracy` | Agreement report | M |
 | GET/POST/PATCH | `/admin/users`, `/admin/locations`, `/admin/categories`, `/admin/skills`, `/admin/sla-rules` | List/create/update (PATCH uses `/{id}`) | A |
-| GET/POST/PATCH | `/technicians` | Profile management (PATCH uses `/{id}`) | M, A |
+| GET/POST/PATCH | `/technicians` | Profile management (GET and PATCH also take `/{id}`) | M, A |
+| GET | `/technicians/form-options` | Profile form choices: Technician accounts without a profile, active Skills and Blocks | M, A |
+| GET | `/technicians/{id}`, `/technician/profile` | Own profile only; anyone else's is concealed as 404 | T |
 | GET | `/admin/audit-logs` | Search audit history | A |
 
 ### 8.1 Example complaint request

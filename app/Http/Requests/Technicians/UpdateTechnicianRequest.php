@@ -17,11 +17,8 @@ class UpdateTechnicianRequest extends FormRequest
         $technician = $this->route('technician');
         $type = TechnicianType::tryFrom((string) $this->input('type', $technician->type->value));
 
-        $rules = array_map(fn (array $rules) => ['sometimes', ...$rules], $this->profileRules());
-        $rules['skill_ids.*'] = $this->profileRules()['skill_ids.*'];
-
         return [
-            ...$rules,
+            ...$this->profileRules('sometimes'),
             'user_id' => ['prohibited'],
             // A Contractor must end up with a company name: sent now, or already on file.
             'company_name' => match (true) {

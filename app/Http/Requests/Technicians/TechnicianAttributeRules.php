@@ -10,8 +10,15 @@ use Illuminate\Validation\Rule;
 /** Rules shared by creating and editing a Technician profile. */
 trait TechnicianAttributeRules
 {
-    /** Each field's rules, without presence (required/sometimes), which differs between create and edit. */
-    protected function profileRules(): array
+    /** Each field's rules, led by $presence ('required' on create, 'sometimes' on edit); array items need no presence rule. */
+    protected function profileRules(string $presence): array
+    {
+        return collect($this->fieldRules())
+            ->map(fn (array $rules, string $field) => str_contains($field, '*') ? $rules : [$presence, ...$rules])
+            ->all();
+    }
+
+    private function fieldRules(): array
     {
         return [
             'type' => [Rule::enum(TechnicianType::class)],

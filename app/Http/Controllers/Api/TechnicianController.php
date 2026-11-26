@@ -28,7 +28,7 @@ class TechnicianController extends Controller
     public function index(TechnicianSearchRequest $request): AnonymousResourceCollection
     {
         $technicians = Technician::query()
-            ->with(['user', 'skills', 'homeBlock'])
+            ->with(Technician::DISPLAY_RELATIONS)
             ->when($request->filled('skill'), fn (Builder $query) => $query->whereHas('skills', fn (Builder $skill) => $skill->whereKey($request->integer('skill'))))
             ->when($request->filled('availability'), fn (Builder $query) => $query->where('availability', $request->string('availability')))
             ->when($request->filled('type'), fn (Builder $query) => $query->where('type', $request->string('type')))
@@ -45,9 +45,9 @@ class TechnicianController extends Controller
     /** A Technician may read only their own profile; anyone else's is concealed as 404. */
     public function show(Request $request, Technician $technician): TechnicianResource
     {
-        abort_if($request->user()->hasRole(Role::Technician) && $technician->user_id !== $request->user()->id, 404);
+        abort_if($request->user()->hasRole(Role::Technician) && ! $technician->isProfileOf($request->user()), 404);
 
-        return new TechnicianResource($technician->load(['user', 'skills', 'homeBlock']));
+        return new TechnicianResource($technician->load(Technician::DISPLAY_RELATIONS));
     }
 
     /** The signed-in Technician's own profile. */
@@ -55,7 +55,7 @@ class TechnicianController extends Controller
     {
         $technician = Technician::where('user_id', $request->user()->id)->firstOrFail();
 
-        return new TechnicianResource($technician->load(['user', 'skills', 'homeBlock']));
+        return new TechnicianResource($technician->load(Technician::DISPLAY_RELATIONS));
     }
 
     /** Choices for the profile form: Technician accounts still without one, active Skills and Blocks. */

@@ -20,6 +20,7 @@ return new class extends Migration
             $table->foreignId('home_block_id')->constrained('locations')->restrictOnDelete();
             $table->timestamps();
 
+            // The team filters, and later the recommendation ranking (design §6.2), select by these.
             $table->index(['availability', 'type']);
         });
 

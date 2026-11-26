@@ -2,11 +2,13 @@
 
 namespace App\Http\Controllers\Api;
 
+use App\Enums\ComplaintStatus;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Complaints\ComplaintSearchRequest;
 use App\Http\Requests\Complaints\StoreComplaintRequest;
 use App\Http\Resources\ComplaintDetailResource;
 use App\Http\Resources\ComplaintResource;
+use App\Http\Resources\ComplaintSummaryResource;
 use App\Models\Complaint;
 use App\Models\Location;
 use App\Services\Complaints\ComplaintIntake;
@@ -23,9 +25,17 @@ class ComplaintController extends Controller
     /** Newest first unless `sort` says otherwise, paginated; filters combine. */
     public function index(ComplaintSearchRequest $request): AnonymousResourceCollection
     {
+        $viewer = $request->user();
+        $scope = $request->scope();
+
         $complaints = $request->applySort(Complaint::query())
-            ->visibleTo($request->user())
+            ->visibleTo($viewer)
             ->with(['location', 'category'])
+            ->when($scope === 'mine', fn (Builder $query) => $query->where('reporter_id', $viewer->id))
+            // A followed Complaint stays in the list until it is Closed.
+            ->when($scope === 'following', fn (Builder $query) => $query->followedBy($viewer)
+                ->where('status', '!=', ComplaintStatus::Closed)
+                ->withFollowedBy($viewer))
             ->when($request->filled('q'), function (Builder $query) use ($request) {
                 $term = '%'.$request->string('q').'%';
                 $query->where(fn (Builder $match) => $match->where('title', 'like', $term)->orWhere('reference_no', 'like', $term));
@@ -42,14 +52,19 @@ class ComplaintController extends Controller
             ->paginate($request->integer('per_page', 25))
             ->withQueryString();
 
-        return ComplaintResource::collection($complaints);
+        return $scope === 'following'
+            ? ComplaintSummaryResource::collection($complaints)
+            : ComplaintResource::collection($complaints);
     }
 
-    public function show(Request $request, int $complaint): ComplaintDetailResource
+    /** In full for the reporter and the office; a Follower gets the summary only. */
+    public function show(Request $request, int $complaint): ComplaintDetailResource|ComplaintSummaryResource
     {
         $complaint = Complaint::query()->visibleTo($request->user())->findOrFail($complaint);
 
-        return new ComplaintDetailResource($complaint->load(ComplaintDetailResource::RELATIONS));
+        return $complaint->isSeenInFullBy($request->user())
+            ? new ComplaintDetailResource($complaint->load(ComplaintDetailResource::RELATIONS))
+            : new ComplaintSummaryResource($complaint->load('category'));
     }
 
     public function store(StoreComplaintRequest $request): JsonResponse

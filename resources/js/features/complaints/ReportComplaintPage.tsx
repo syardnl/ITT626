@@ -8,6 +8,7 @@ import {
     type AffectedUnits, type ApiError, type Category, type ComplaintDetail, type LocationNode, type Urgency,
 } from '../../lib/api';
 import { useAuth } from '../../lib/auth';
+import { OpenComplaintsHere } from './OpenComplaintsHere';
 
 interface CommonAreaChoice {
     id: number;
@@ -134,6 +135,7 @@ export function ReportComplaintPage() {
                             </select>
                             {fieldError('location_id') && <p id="location-error" className="text-sm text-red-700">{fieldError('location_id')}</p>}
                         </div>
+                        {locationId && <OpenComplaintsHere locationId={Number(locationId)} />}
                     </div>
                 )}
 

@@ -75,6 +75,18 @@ class Location extends Model
             ->orWhereIn('parent_id', Location::query()->select('id')->where('parent_id', $blockId)->where('type', LocationType::Floor)));
     }
 
+    /**
+     * The Common Areas whose existing reports a viewer may see and follow: for a Resident, those in
+     * their own Block (at Block or Floor level) and the Shared Areas; for the office, every one.
+     */
+    public function scopeCommonAreasSharedWith(Builder $query, User $viewer): void
+    {
+        $query->where('type', LocationType::CommonArea)->when(! $viewer->isOffice(), fn (Builder $shared) => $shared
+            ->where(fn (Builder $where) => $where
+                ->whereNull('parent_id')
+                ->when($viewer->blockId(), fn (Builder $inBlock, int $blockId) => $inBlock->orWhere(fn (Builder $own) => $own->withinBlock($blockId)))));
+    }
+
     public function scopeActive(Builder $query): void
     {
         $query->where('active', true);

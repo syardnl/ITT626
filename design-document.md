@@ -415,7 +415,8 @@ Base URL `/api/v1`. JSON responses unless multipart upload or file download. Aut
 | GET | `/locations/{id}/open-complaints` | Existing common-area summaries | R, M |
 | GET/POST | `/complaints` | Authorized list / submit complaint | All / R |
 | GET | `/complaints/{id}` | Authorized detail and timeline | All |
-| POST | `/complaints/{id}/follow` | Follow common-area report | R |
+| POST | `/complaints/{id}/follow` | Follow a Common Area Complaint | R |
+| DELETE | `/complaints/{id}/follow` | Unfollow | R |
 | POST | `/complaints/{id}/comments` | Add comment | Authorized participant |
 | POST | `/complaints/{id}/review` | Begin review and record response | M |
 | PATCH | `/complaints/{id}/classification` | Confirm/change category and priority | M |

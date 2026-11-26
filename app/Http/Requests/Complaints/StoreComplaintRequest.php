@@ -19,9 +19,19 @@ use Illuminate\Validation\Validator;
  */
 class StoreComplaintRequest extends FormRequest
 {
+    /** The Idempotency-Key header is validated with the body, as `idempotency_key`. */
+    protected function prepareForValidation(): void
+    {
+        if ($this->hasHeader('Idempotency-Key')) {
+            $this->merge(['idempotency_key' => $this->header('Idempotency-Key')]);
+        }
+    }
+
     public function rules(): array
     {
         return [
+            // The SPA sends 32 hex characters per form; a UUID fits too.
+            'idempotency_key' => ['sometimes', 'filled', 'string', 'regex:/^[A-Za-z0-9_-]{16,100}$/'],
             'my_unit' => ['sometimes', 'accepted', 'prohibits:location_id'],
             'location_id' => ['required_without:my_unit', 'integer', Rule::exists('locations', 'id')->where('active', true)->where(
                 fn (Builder $location) => $location->where('type', LocationType::CommonArea->value)->orWhere('id', $this->user()->unit_id)
@@ -53,11 +63,18 @@ class StoreComplaintRequest extends FormRequest
         return [
             'location_id.required_without' => 'Choose My unit or a Common Area.',
             'location_id.exists' => 'Choose your own Unit or an active Common Area.',
+            'idempotency_key.filled' => 'The Idempotency-Key header must not be empty.',
+            'idempotency_key.regex' => 'The Idempotency-Key header must be 16–100 letters, digits, hyphens or underscores.',
             'photos.max' => 'Attach at most five photos.',
             'photos.*.uploaded' => 'Photo :position could not be received. Each photo must be 10 MB or smaller.',
             'photos.*.max' => 'Each photo must be 10 MB or smaller.',
             'photos.*.mimetypes' => 'Each photo must be a JPEG, PNG or WebP image.',
         ];
+    }
+
+    public function idempotencyKey(): ?string
+    {
+        return $this->validated('idempotency_key');
     }
 
     /** @return array<int, UploadedFile> */
@@ -69,7 +86,7 @@ class StoreComplaintRequest extends FormRequest
     /** The validated answers, with "My unit" resolved to the Resident's Unit. */
     public function answers(): array
     {
-        $answers = Arr::except($this->validated(), ['my_unit', 'photos']);
+        $answers = Arr::except($this->validated(), ['my_unit', 'photos', 'idempotency_key']);
 
         return $this->has('my_unit') ? [...$answers, 'location_id' => $this->user()->unit_id] : $answers;
     }

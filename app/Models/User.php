@@ -66,6 +66,12 @@ class User extends Authenticatable
         return $this->hasRole(Role::Manager, Role::Administrator);
     }
 
+    /** The Block the Resident's Unit is in (Unit > Floor > Block), or null without a Unit. */
+    public function blockId(): ?int
+    {
+        return $this->unit?->parent?->parent_id;
+    }
+
     /** Replace whatever role the account held: an account holds exactly one. */
     public function assignRole(Role $role): void
     {

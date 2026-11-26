@@ -5,12 +5,16 @@ namespace App\Http\Requests\Complaints;
 use App\Enums\ComplaintStatus;
 use App\Enums\LocationType;
 use App\Enums\Priority;
+use App\Enums\Role;
 use App\Http\Requests\Concerns\AllowlistedSort;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 
-/** Allowlisted filters and sorts for the Complaint list. `category=unclassified` finds Complaints without one. */
+/**
+ * Allowlisted filters and sorts for the Complaint list. `scope` is `mine` (what the viewer
+ * reported; a Resident's default) or `following`. `category=unclassified` finds Complaints without one.
+ */
 class ComplaintSearchRequest extends FormRequest
 {
     use AllowlistedSort;
@@ -18,6 +22,8 @@ class ComplaintSearchRequest extends FormRequest
     public function rules(): array
     {
         return [
+            // Only Residents have a scope: the office sees every Complaint, and nobody else follows.
+            'scope' => ['sometimes', Rule::prohibitedIf(! $this->user()->hasRole(Role::Resident)), Rule::in(['mine', 'following'])],
             'q' => ['sometimes', 'string', 'max:100'],
             'status' => ['sometimes', Rule::enum(ComplaintStatus::class)],
             'priority' => ['sometimes', Rule::enum(Priority::class)],
@@ -32,6 +38,12 @@ class ComplaintSearchRequest extends FormRequest
             'sort' => $this->sortRule(),
             'per_page' => ['sometimes', 'integer', 'between:1,100'],
         ];
+    }
+
+    /** The scope asked for, or `mine` for a Resident; none (everything visible) for anyone else. */
+    public function scope(): ?string
+    {
+        return $this->input('scope', $this->user()->hasRole(Role::Resident) ? 'mine' : null);
     }
 
     /**

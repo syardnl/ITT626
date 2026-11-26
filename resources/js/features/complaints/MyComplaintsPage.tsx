@@ -1,18 +1,40 @@
 import { useEffect, useState } from 'react';
-import { Link } from 'react-router';
+import { Link, useSearchParams } from 'react-router';
 import { Alert } from '../../components/Alert';
-import { api, complaintStatusLabel, formatDateTime, priorityLabel, toApiError, type Complaint, type Paginated } from '../../lib/api';
+import {
+    api, categoryName, complaintStatusLabel, formatDateTime, priorityLabel, toApiError,
+    type Complaint, type ComplaintSummary, type Paginated,
+} from '../../lib/api';
 
+type Scope = 'mine' | 'following';
+
+const tabs: { scope: Scope; label: string }[] = [
+    { scope: 'mine', label: 'Reported by me' },
+    { scope: 'following', label: 'Following' },
+];
+
+/** A Resident's own Complaints, or (`?scope=following`) the ones they follow until each is Closed. */
 export function MyComplaintsPage() {
+    const [searchParams, setSearchParams] = useSearchParams();
+    const scope: Scope = searchParams.get('scope') === 'following' ? 'following' : 'mine';
     const [page, setPage] = useState(1);
-    const [result, setResult] = useState<Paginated<Complaint> | null>(null);
+    const [result, setResult] = useState<Paginated<Complaint | ComplaintSummary> | null>(null);
     const [error, setError] = useState<string | null>(null);
 
     useEffect(() => {
-        api.get<Paginated<Complaint>>('/complaints', { params: { page } })
-            .then((response) => setResult(response.data))
-            .catch((caught) => setError(toApiError(caught).message));
-    }, [page]);
+        let current = true;
+        setResult(null);
+        setError(null);
+        api.get<Paginated<Complaint | ComplaintSummary>>('/complaints', { params: { scope, page } })
+            .then((response) => current && setResult(response.data))
+            .catch((caught) => current && setError(toApiError(caught).message));
+        return () => { current = false; };
+    }, [scope, page]);
+
+    function choose(next: Scope) {
+        setPage(1);
+        setSearchParams(next === 'mine' ? {} : { scope: next });
+    }
 
     return (
         <section>
@@ -23,24 +45,46 @@ export function MyComplaintsPage() {
                 </Link>
             </div>
 
-            {error && <div className="mt-4"><Alert kind="error">{error}</Alert></div>}
-            {result && result.data.length === 0 && <p className="mt-6 text-slate-600">You have not reported any problems yet.</p>}
-
-            <ul className="mt-6 divide-y divide-slate-200 rounded-md border border-slate-200 bg-white">
-                {result?.data.map((complaint) => (
-                    <li key={complaint.id}>
-                        <Link to={`/resident/complaints/${complaint.id}`} className="block p-4 hover:bg-slate-50 focus:outline-2 focus:outline-blue-600">
-                            <p className="font-medium">{complaint.title}</p>
-                            <p className="mt-1 text-sm text-slate-600">
-                                {complaint.reference_no} · {complaint.location.name} · {formatDateTime(complaint.created_at)}
-                            </p>
-                            <p className="mt-1 text-sm">
-                                <span className="font-medium">{complaintStatusLabel[complaint.status]}</span> · {priorityLabel[complaint.priority]} priority
-                            </p>
-                        </Link>
-                    </li>
+            <nav aria-label="Which Complaints" className="mt-4 flex gap-2">
+                {tabs.map((tab) => (
+                    <button
+                        key={tab.scope} type="button" onClick={() => choose(tab.scope)} aria-current={scope === tab.scope ? 'page' : undefined}
+                        className={`min-h-11 rounded-md px-4 font-medium focus:outline-2 focus:outline-offset-2 focus:outline-blue-600 ${scope === tab.scope ? 'bg-slate-900 text-white' : 'border border-slate-300 bg-white hover:bg-slate-50'}`}
+                    >
+                        {tab.label}
+                    </button>
                 ))}
-            </ul>
+            </nav>
+
+            {error && <div className="mt-4"><Alert kind="error">{error}</Alert></div>}
+            {result && result.data.length === 0 && (
+                <p className="mt-6 text-slate-600">
+                    {scope === 'mine'
+                        ? 'You have not reported any problems yet.'
+                        : 'You are not following any Complaints. When you report a problem at a Common Area, you can follow one already raised there.'}
+                </p>
+            )}
+
+            {result && result.data.length > 0 && (
+                <ul className="mt-6 divide-y divide-slate-200 rounded-md border border-slate-200 bg-white">
+                    {result.data.map((complaint) => (
+                        <li key={complaint.id}>
+                            <Link to={`/resident/complaints/${complaint.id}`} className="block p-4 hover:bg-slate-50 focus:outline-2 focus:outline-blue-600">
+                                <p className="font-medium">{complaint.title}</p>
+                                <p className="mt-1 text-sm text-slate-600">
+                                    {complaint.reference_no}
+                                    {'location' in complaint ? ` · ${complaint.location.name}` : ` · ${categoryName(complaint.category)}`}
+                                    {' · '}{formatDateTime(complaint.created_at)}
+                                </p>
+                                <p className="mt-1 text-sm">
+                                    <span className="font-medium">{complaintStatusLabel[complaint.status]}</span>
+                                    {'priority' in complaint && ` · ${priorityLabel[complaint.priority]} priority`}
+                                </p>
+                            </Link>
+                        </li>
+                    ))}
+                </ul>
+            )}
 
             {result && result.meta.last_page > 1 && (
                 <nav aria-label="Pages" className="mt-4 flex items-center gap-3">

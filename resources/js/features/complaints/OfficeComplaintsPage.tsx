@@ -3,7 +3,7 @@ import { Link } from 'react-router';
 import { Alert } from '../../components/Alert';
 import { inputClassName } from '../../components/TextField';
 import {
-    api, complaintStatusLabel, formatDateTime, priorities, priorityLabel, toApiError,
+    api, categoryName, complaintStatusLabel, formatDateTime, priorities, priorityLabel, toApiError,
     type Category, type Complaint, type ComplaintStatus, type LocationNode, type Paginated,
 } from '../../lib/api';
 
@@ -101,7 +101,7 @@ export function OfficeComplaintsPage({ basePath }: { basePath: string }) {
                                 {complaint.safety_risk && <span className="rounded bg-red-100 px-2 py-0.5 text-sm font-semibold text-red-800">⚠ Safety risk</span>}
                             </p>
                             <p className="mt-1 text-sm text-slate-600">
-                                {complaint.reference_no} · {complaint.location.name} · {complaint.category?.name ?? 'Not yet classified'} · {formatDateTime(complaint.created_at)}
+                                {complaint.reference_no} · {complaint.location.name} · {categoryName(complaint.category)} · {formatDateTime(complaint.created_at)}
                             </p>
                             <p className="mt-1 text-sm">
                                 <span className="font-medium">{complaintStatusLabel[complaint.status]}</span> · {priorityLabel[complaint.priority]} priority

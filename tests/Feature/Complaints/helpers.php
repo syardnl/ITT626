@@ -58,3 +58,33 @@ function submitComplaint(array $body)
 {
     return test()->postJson('/api/v1/complaints', $body);
 }
+
+/**
+ * Rina (Unit A-01-01) signed in, with Complaints by her neighbour Sam (A-01-02) at the Block A
+ * lift, on a Floor A-01 corridor, at the shared pool, inside his own Unit, and at a Block B lift.
+ */
+function openComplaintsSetup(): array
+{
+    $setup = complaintsSetup();
+    $corridor = place(LocationType::CommonArea, $setup['floor'], 'A-01-CORRIDOR');
+    $blockB = place(LocationType::Block, null, 'B');
+    $liftB = place(LocationType::CommonArea, $blockB, 'B-LIFT-1');
+
+    test()->actingAs($sam = account(Role::Resident, ['name' => 'Sam Resident', 'unit_id' => $setup['neighbour']->id]));
+    $submit = fn (array $body) => submitComplaint(complaintBody($body))->json('data');
+    $complaints = [
+        'liftComplaint' => $submit(['location_id' => $setup['lift']->id, 'title' => 'Lift stuck on floor 3']),
+        'corridorComplaint' => $submit(['location_id' => $corridor->id, 'title' => 'Corridor light out']),
+        'poolComplaint' => $submit(['location_id' => $setup['pool']->id, 'title' => 'Pool filter noisy']),
+        'samUnitComplaint' => $submit(['my_unit' => true, 'title' => 'Bathroom tap dripping']),
+        'liftBComplaint' => $submit(['location_id' => $liftB->id, 'title' => 'Block B lift door jammed']),
+    ];
+    test()->actingAs($setup['rina']);
+
+    return [...$setup, ...$complaints, 'corridor' => $corridor, 'blockB' => $blockB, 'liftB' => $liftB, 'sam' => $sam];
+}
+
+function openComplaintsAt(int $locationId)
+{
+    return test()->getJson("/api/v1/locations/{$locationId}/open-complaints");
+}

@@ -80,4 +80,7 @@ it('admits each role to the Complaint endpoints it may call', function (string $
     'submit' => ['POST', '/api/v1/complaints', [Role::Resident]],
     'list' => ['GET', '/api/v1/complaints', Role::cases()],
     'detail' => ['GET', '/api/v1/complaints/999999', Role::cases()],
+    'open Complaints at a Location' => ['GET', '/api/v1/locations/999999/open-complaints', [Role::Resident, Role::Manager]],
+    'follow' => ['POST', '/api/v1/complaints/999999/follow', [Role::Resident]],
+    'unfollow' => ['DELETE', '/api/v1/complaints/999999/follow', [Role::Resident]],
 ]);

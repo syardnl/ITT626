@@ -13,4 +13,13 @@ enum ComplaintStatus: string
     case Resolved = 'resolved';
     case Returned = 'returned';
     case Closed = 'closed';
+
+    /** Resolved and Closed, the statuses that are no longer open: lists of open Complaints at a Location and Follow leave these out. */
+    public const array NOT_OPEN = [self::Resolved, self::Closed];
+
+    /** Open means anything not Resolved or Closed. */
+    public function isOpen(): bool
+    {
+        return ! in_array($this, self::NOT_OPEN, true);
+    }
 }

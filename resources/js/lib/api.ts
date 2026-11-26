@@ -274,6 +274,21 @@ export interface Complaint {
     created_at: string;
 }
 
+/**
+ * Someone else's Complaint as an list of open Complaints at a Location or a Follower sees it: reference, title,
+ * Category, status and date only. `following` and `mine` describe the viewer.
+ */
+export interface ComplaintSummary {
+    id: number;
+    reference_no: string;
+    title: string;
+    category: { id: number; name: string } | null;
+    status: ComplaintStatus;
+    created_at: string;
+    following: boolean;
+    mine: boolean;
+}
+
 export interface StatusTimelineEntry {
     type: 'status';
     from_status: ComplaintStatus | null;
@@ -283,7 +298,7 @@ export interface StatusTimelineEntry {
     at: string;
 }
 
-/** A Complaint as its reporter opens it (GET /complaints/{id}). */
+/** A Complaint as its reporter or the office opens it (GET /complaints/{id}); a Follower gets a ComplaintSummary. */
 export interface ComplaintDetail extends Complaint {
     description: string;
     urgency: Urgency;
@@ -296,4 +311,20 @@ export interface ComplaintDetail extends Complaint {
     timeline: StatusTimelineEntry[];
     /** Present for the office (Manager, Administrator) only. */
     reporter?: { id: number; name: string; email: string; unit: { id: number; code: string } | null };
+}
+
+/** A Complaint's Category name, or how to say it has none yet. */
+export function categoryName(category: { name: string } | null): string {
+    return category?.name ?? 'Not yet classified';
+}
+
+/** GET /complaints/{id} answers in full for the reporter and the office, and with a summary for a Follower. */
+export function isFullComplaint(complaint: ComplaintDetail | ComplaintSummary): complaint is ComplaintDetail {
+    return 'description' in complaint;
+}
+
+/** Follow or unfollow another Resident's Common Area Complaint. */
+export async function setFollowing(complaintId: number, follow: boolean): Promise<void> {
+    await ensureCsrfCookie();
+    await (follow ? api.post(`/complaints/${complaintId}/follow`) : api.delete(`/complaints/${complaintId}/follow`));
 }

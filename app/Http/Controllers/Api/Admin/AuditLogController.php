@@ -17,7 +17,7 @@ class AuditLogController extends Controller
     {
         $timezone = Property::current()->timezone;
 
-        $logs = AuditLog::query()
+        $logs = $request->applySort(AuditLog::query())
             ->with('actor')
             ->when($request->filled('actor'), function (Builder $query) use ($request) {
                 $term = '%'.$request->string('actor').'%';

@@ -18,10 +18,10 @@ class UserController extends Controller
 {
     public function __construct(private readonly AccountRegistry $accounts) {}
 
-    /** Paginated by name; `block` finds Residents whose Unit is in that Block. */
+    /** Paginated by name unless `sort` says otherwise; `block` finds Residents whose Unit is in that Block. */
     public function index(UserSearchRequest $request): AnonymousResourceCollection
     {
-        $users = User::query()
+        $users = $request->applySort(User::query())
             ->with(['roles', 'unit'])
             ->when($request->filled('q'), function (Builder $query) use ($request) {
                 $term = '%'.$request->string('q').'%';

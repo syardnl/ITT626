@@ -24,10 +24,10 @@ class TechnicianController extends Controller
 {
     public function __construct(private readonly TechnicianRegistry $technicians) {}
 
-    /** Paginated by Technician name; filters combine. */
+    /** Paginated by Technician name unless `sort` says otherwise; filters combine. */
     public function index(TechnicianSearchRequest $request): AnonymousResourceCollection
     {
-        $technicians = Technician::query()
+        $technicians = $request->applySort(Technician::query())
             ->with(Technician::DISPLAY_RELATIONS)
             ->when($request->filled('skill'), fn (Builder $query) => $query->whereHas('skills', fn (Builder $skill) => $skill->whereKey($request->integer('skill'))))
             ->when($request->filled('availability'), fn (Builder $query) => $query->where('availability', $request->string('availability')))

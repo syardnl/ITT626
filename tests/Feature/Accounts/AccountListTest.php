@@ -49,3 +49,16 @@ it('rejects unknown filter values', function () {
     $this->getJson("/api/v1/admin/users?block={$unit['id']}")->assertStatus(422)->assertJsonValidationErrors('block');
     $this->getJson('/api/v1/admin/users?per_page=1000')->assertStatus(422);
 });
+
+it('sorts by an allowlisted field, descending with a leading minus', function () {
+    accountsSetup();
+    account(Role::Manager, ['name' => 'Mariam Manager', 'email' => 'zz@office.test']);
+    account(Role::Technician, ['name' => 'Zul Technician', 'email' => 'aa@office.test']);
+
+    $names = fn (string $sort) => $this->getJson("/api/v1/admin/users?sort={$sort}")->assertOk()->json('data.*.name');
+
+    expect($names('-name'))->toBe(['Zul Technician', 'Mariam Manager', 'Adam Admin'])
+        ->and($names('email'))->toBe(['Zul Technician', 'Adam Admin', 'Mariam Manager']);
+
+    $this->getJson('/api/v1/admin/users?sort=password')->assertStatus(422)->assertJsonValidationErrors('sort');
+});

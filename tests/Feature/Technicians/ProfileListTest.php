@@ -61,3 +61,14 @@ it('lets an Administrator list and edit profiles too', function () {
     $this->patchJson("/api/v1/technicians/{$id}", ['availability' => 'busy'])->assertOk();
     $this->getJson('/api/v1/technicians')->assertOk()->assertJsonPath('data.0.availability', 'busy');
 });
+
+it('sorts by an allowlisted field, descending with a leading minus', function () {
+    threeTechnicians();
+    $names = fn (string $sort) => $this->getJson("/api/v1/technicians?sort={$sort}")->assertOk()->json('data.*.user.name');
+
+    expect($names('-name'))->toBe(['Tariq Technician', 'Chen Contractor', 'Aina Technician'])
+        ->and($names('availability'))->toBe(['Tariq Technician', 'Chen Contractor', 'Aina Technician'])
+        ->and($names('-availability'))->toBe(['Aina Technician', 'Chen Contractor', 'Tariq Technician']);
+
+    $this->getJson('/api/v1/technicians?sort=user_id')->assertStatus(422)->assertJsonValidationErrors('sort');
+});

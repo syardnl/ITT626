@@ -17,12 +17,12 @@ class LocationController extends Controller
 {
     public function __construct(private readonly LocationRegistry $locations) {}
 
-    /** Paginated list including inactive Locations, ordered by code; browse a level with `parent`. */
+    /** Paginated list including inactive Locations, ordered by code unless `sort` says otherwise; browse a level with `parent`. */
     public function index(LocationSearchRequest $request): AnonymousResourceCollection
     {
         $parent = $request->string('parent')->toString();
 
-        $locations = Location::query()
+        $locations = $request->applySort(Location::query())
             ->withCount('children')
             ->when($parent === 'root', fn (Builder $query) => $query->whereNull('parent_id'))
             ->when(ctype_digit($parent), fn (Builder $query) => $query->where('parent_id', (int) $parent))

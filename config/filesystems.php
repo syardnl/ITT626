@@ -38,6 +38,15 @@ return [
             'report' => false,
         ],
 
+        // Complaint photos: private, never served directly; GET /attachments/{id} checks who may see each one.
+        'evidence' => [
+            'driver' => 'local',
+            'root' => storage_path('app/private/evidence'),
+            'serve' => false,
+            'throw' => true,
+            'report' => false,
+        ],
+
         'public' => [
             'driver' => 'local',
             'root' => storage_path('app/public'),

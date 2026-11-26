@@ -61,6 +61,24 @@ export function ComplaintDetailPage() {
                 <p className="mt-2 whitespace-pre-line">{complaint.description}</p>
             </section>
 
+            {complaint.evidence.length > 0 && (
+                <section>
+                    <h2 className="text-lg font-semibold">Photos</h2>
+                    <ul className="mt-2 grid grid-cols-2 gap-3 sm:grid-cols-3">
+                        {complaint.evidence.map((photo, index) => (
+                            <li key={photo.id}>
+                                <a href={photo.url} target="_blank" rel="noreferrer" className="block focus:outline-2 focus:outline-offset-2 focus:outline-blue-600">
+                                    <img
+                                        src={photo.url} alt={`Photo ${index + 1} of ${complaint.evidence.length}`} loading="lazy"
+                                        width={photo.width} height={photo.height} className="aspect-square w-full rounded-md object-cover"
+                                    />
+                                </a>
+                            </li>
+                        ))}
+                    </ul>
+                </section>
+            )}
+
             <section>
                 <h2 className="text-lg font-semibold">Timeline</h2>
                 <ol className="mt-2 space-y-3 border-l-2 border-slate-200 pl-4">

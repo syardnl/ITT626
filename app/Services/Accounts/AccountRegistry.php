@@ -62,6 +62,11 @@ class AccountRegistry
             $to = isset($attributes['role']) ? Role::from($attributes['role']) : $from;
             unset($attributes['active'], $attributes['role']);
 
+            // A Technician profile belongs to a Technician; there is no profile delete to fall back on.
+            if ($from === Role::Technician && $to !== Role::Technician && $user->technician()->exists()) {
+                throw new AccountConflict('This account has a Technician profile, so it must stay a Technician. Give the person a separate account for the new role.');
+            }
+
             $user->fill($attributes);
             if ($to !== Role::Resident) {
                 $user->fill(['unit_id' => null, 'resident_type' => null]);

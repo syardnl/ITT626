@@ -181,3 +181,36 @@ export interface AdminUser {
     password_set: boolean;
     created_at: string;
 }
+
+export type TechnicianType = 'in_house' | 'contractor';
+export type Availability = 'available' | 'busy' | 'on_leave';
+
+export const technicianTypeLabel: Record<TechnicianType, string> = {
+    in_house: 'In-house',
+    contractor: 'Contractor',
+};
+
+export const availabilityLabel: Record<Availability, string> = {
+    available: 'Available',
+    busy: 'Busy',
+    on_leave: 'On leave',
+};
+
+/** A Technician profile as /technicians returns it. */
+export interface Technician {
+    id: number;
+    user: { id: number; name: string; email: string; active: boolean };
+    type: TechnicianType;
+    company_name: string | null;
+    skills: { id: number; name: string; active: boolean }[];
+    availability: Availability;
+    max_tasks: number;
+    home_block: { id: number; code: string; name: string };
+}
+
+/** Choices for the Technician profile form (GET /technicians/form-options). */
+export interface TechnicianFormOptions {
+    accounts: { id: number; name: string; email: string }[];
+    skills: { id: number; name: string }[];
+    blocks: { id: number; code: string; name: string }[];
+}

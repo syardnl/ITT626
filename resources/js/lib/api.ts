@@ -294,4 +294,6 @@ export interface ComplaintDetail extends Complaint {
     priority_rule_version: number;
     initial_priority: Priority;
     timeline: StatusTimelineEntry[];
+    /** Present for the office (Manager, Administrator) only. */
+    reporter?: { id: number; name: string; email: string; unit: { id: number; code: string } | null };
 }

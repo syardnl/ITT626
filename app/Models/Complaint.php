@@ -59,13 +59,15 @@ class Complaint extends Model
     }
 
     /**
-     * The Complaints this account may open: a Resident their own. Every read goes
+     * The Complaints this account may open: a Resident their own, the office (Manager,
+     * Administrator) every one, a Technician none until Assignment exists. Every read goes
      * through here, so anything outside it is concealed as not found.
      */
     public function scopeVisibleTo(Builder $query, User $viewer): void
     {
         match (true) {
             $viewer->hasRole(Role::Resident) => $query->where('reporter_id', $viewer->id),
+            $viewer->isOffice() => $query,   // no restriction
             default => $query->whereRaw('1 = 0'),
         };
     }

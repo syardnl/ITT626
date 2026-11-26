@@ -6,15 +6,24 @@ use App\Models\Complaint;
 use App\Models\StatusChange;
 use Illuminate\Http\Request;
 
-/** A Complaint as its reporter opens it: the answers, the Priority Score and the timeline. @mixin Complaint */
+/**
+ * A Complaint opened in full: the answers, the Priority Score and the timeline;
+ * the office (Manager, Administrator) also sees who reported it. @mixin Complaint
+ */
 class ComplaintDetailResource extends ComplaintResource
 {
-    public const RELATIONS = ['location', 'category', 'statusHistory.actor'];
+    public const RELATIONS = ['location', 'category', 'statusHistory.actor', 'reporter.unit'];
 
     public function toArray(Request $request): array
     {
         return [
             ...parent::toArray($request),
+            'reporter' => $this->when($request->user()->isOffice(), fn () => [
+                'id' => $this->reporter->id,
+                'name' => $this->reporter->name,
+                'email' => $this->reporter->email,
+                'unit' => $this->reporter->unit ? ['id' => $this->reporter->unit->id, 'code' => $this->reporter->unit->code] : null,
+            ]),
             'description' => $this->description,
             'urgency' => $this->urgency->value,
             'affected_units' => $this->affected_units->value,

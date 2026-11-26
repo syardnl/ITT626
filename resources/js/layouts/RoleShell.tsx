@@ -5,7 +5,11 @@ import { landingPath, useAuth } from '../lib/auth';
 
 /** Section links per role; each later ticket adds its screens here. */
 const navigation: Record<Role, { to: string; label: string }[]> = {
-    resident: [],
+    resident: [
+        { to: '/resident', label: 'Home' },
+        { to: '/resident/complaints/new', label: 'Report a problem' },
+        { to: '/resident/complaints', label: 'My Complaints' },
+    ],
     manager: [
         { to: '/manager', label: 'Home' },
         { to: '/manager/technicians', label: 'Technicians' },

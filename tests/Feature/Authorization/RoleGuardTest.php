@@ -66,3 +66,18 @@ it('refuses, at the database, to store a second role for an account', function (
     expect(fn () => DB::table('role_user')->insert(['user_id' => $user->id, 'role_id' => $administrator]))
         ->toThrow(UniqueConstraintViolationException::class);
 });
+
+it('admits each role to the Complaint endpoints it may call', function (string $method, string $uri, array $allowed) {
+    foreach (Role::cases() as $role) {
+        $status = $this->actingAs(account($role))->json($method, $uri)->status();
+
+        // Allowed roles get through the role check (to validation, a list, or a concealed 404); others get 403.
+        in_array($role, $allowed, true)
+            ? expect($status)->not->toBe(403, "{$role->value} should reach {$method} {$uri}")
+            : expect($status)->toBe(403, "{$role->value} should be refused {$method} {$uri}");
+    }
+})->with([
+    'submit' => ['POST', '/api/v1/complaints', [Role::Resident]],
+    'list' => ['GET', '/api/v1/complaints', Role::cases()],
+    'detail' => ['GET', '/api/v1/complaints/999999', Role::cases()],
+]);

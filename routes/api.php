@@ -9,6 +9,7 @@ use App\Http\Controllers\Api\Admin\UserController as AdminUserController;
 use App\Http\Controllers\Api\Auth\PasswordController;
 use App\Http\Controllers\Api\Auth\SessionController;
 use App\Http\Controllers\Api\CategoryController;
+use App\Http\Controllers\Api\ComplaintController;
 use App\Http\Controllers\Api\LocationTreeController;
 use App\Http\Controllers\Api\MeController;
 use App\Http\Controllers\Api\TechnicianController;
@@ -30,7 +31,11 @@ Route::middleware(['auth:sanctum', 'active'])->group(function () {
         Route::get('/me', MeController::class);
         Route::get('/locations', LocationTreeController::class);
         Route::get('/categories', CategoryController::class);
+        Route::get('/complaints', [ComplaintController::class, 'index']);
+        Route::get('/complaints/{complaint}', [ComplaintController::class, 'show'])->whereNumber('complaint');
     });
+
+    Route::middleware('role:resident')->post('/complaints', [ComplaintController::class, 'store']);
 
     Route::middleware('role:technician')->get('/technician/profile', [TechnicianController::class, 'mine']);
     Route::middleware('role:manager,technician,administrator')

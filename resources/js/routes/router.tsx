@@ -8,6 +8,9 @@ import { AuditLogPage } from '../features/admin/AuditLogPage';
 import { CategoriesPage } from '../features/admin/CategoriesPage';
 import { LocationsPage } from '../features/admin/LocationsPage';
 import { SlaTargetsPage } from '../features/admin/SlaTargetsPage';
+import { ComplaintDetailPage } from '../features/complaints/ComplaintDetailPage';
+import { MyComplaintsPage } from '../features/complaints/MyComplaintsPage';
+import { ReportComplaintPage } from '../features/complaints/ReportComplaintPage';
 import { ManagerLandingPage } from '../features/manager/ManagerLandingPage';
 import { ResidentLandingPage } from '../features/resident/ResidentLandingPage';
 import { MyProfilePage } from '../features/technician/MyProfilePage';
@@ -29,7 +32,12 @@ export const router = createBrowserRouter([
     { path: '/forgot-password', element: <ForgotPasswordPage /> },
     { path: '/reset-password', element: <ChoosePasswordPage purpose="reset" /> },
     { path: '/set-password', element: <ChoosePasswordPage purpose="setPassword" /> },
-    { path: '/resident', element: <RoleShell role="resident" />, children: [{ index: true, element: <ResidentLandingPage /> }] },
+    { path: '/resident', element: <RoleShell role="resident" />, children: [
+        { index: true, element: <ResidentLandingPage /> },
+        { path: 'complaints', element: <MyComplaintsPage /> },
+        { path: 'complaints/new', element: <ReportComplaintPage /> },
+        { path: 'complaints/:id', element: <ComplaintDetailPage /> },
+    ] },
     { path: '/manager', element: <RoleShell role="manager" />, children: [
         { index: true, element: <ManagerLandingPage /> },
         { path: 'technicians', element: <TechniciansPage /> },

@@ -298,6 +298,22 @@ export interface StatusTimelineEntry {
     at: string;
 }
 
+/** A report photo, served by GET /attachments/{id} to the reporter, Managers and Administrators. */
+export interface EvidencePhoto {
+    id: number;
+    type: 'report_photo';
+    mime: string;
+    size_bytes: number;
+    width: number;
+    height: number;
+    uploaded_by: { id: number; name: string };
+    /** Same-origin path; the session cookie authorises it. */
+    url: string;
+}
+
+/** Limits the API enforces on report photos, repeated so the form can warn before sending. */
+export const photoLimits = { count: 5, megabytes: 10, types: ['image/jpeg', 'image/png', 'image/webp'] } as const;
+
 /** A Complaint as its reporter or the office opens it (GET /complaints/{id}); a Follower gets a ComplaintSummary. */
 export interface ComplaintDetail extends Complaint {
     description: string;
@@ -308,6 +324,7 @@ export interface ComplaintDetail extends Complaint {
     priority_breakdown: Record<'urgency' | 'safety_risk' | 'affected_units' | 'location_importance' | 'essential_service', number>;
     priority_rule_version: number;
     initial_priority: Priority;
+    evidence: EvidencePhoto[];
     timeline: StatusTimelineEntry[];
     /** Present for the office (Manager, Administrator) only. */
     reporter?: { id: number; name: string; email: string; unit: { id: number; code: string } | null };

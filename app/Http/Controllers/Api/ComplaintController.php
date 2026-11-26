@@ -69,7 +69,7 @@ class ComplaintController extends Controller
 
     public function store(StoreComplaintRequest $request): JsonResponse
     {
-        $complaint = $this->intake->submit($request->user(), $request->answers());
+        $complaint = $this->intake->submit($request->user(), $request->answers(), $request->photos());
 
         return (new ComplaintDetailResource($complaint->load(ComplaintDetailResource::RELATIONS)))
             ->response()->setStatusCode(201);

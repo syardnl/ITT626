@@ -9,6 +9,7 @@ import {
 } from '../../lib/api';
 import { useAuth } from '../../lib/auth';
 import { OpenComplaintsHere } from './OpenComplaintsHere';
+import { PhotoPicker } from './PhotoPicker';
 
 interface CommonAreaChoice {
     id: number;
@@ -40,6 +41,7 @@ export function ReportComplaintPage() {
     const [safetyRisk, setSafetyRisk] = useState(false);
     const [affectedUnits, setAffectedUnits] = useState<AffectedUnits>('one');
     const [serviceDown, setServiceDown] = useState(false);
+    const [photos, setPhotos] = useState<File[]>([]);
 
     const [busy, setBusy] = useState(false);
     const [error, setError] = useState<ApiError | null>(null);
@@ -67,6 +69,8 @@ export function ReportComplaintPage() {
     }, [place, areaSearch]);
 
     const fieldError = (field: string) => error?.errors[field]?.[0];
+    /** The first error about the photos, whether for the set (`photos`) or one of them (`photos.2`). */
+    const photoError = () => Object.entries(error?.errors ?? {}).find(([field]) => field === 'photos' || field.startsWith('photos.'))?.[1][0];
 
     async function submit(event: FormEvent) {
         event.preventDefault();
@@ -74,16 +78,20 @@ export function ReportComplaintPage() {
         setError(null);
         try {
             await ensureCsrfCookie();
-            const response = await api.post<{ data: ComplaintDetail }>('/complaints', {
-                ...(place === 'my_unit' ? { my_unit: true } : { location_id: locationId ? Number(locationId) : null }),
-                title,
-                description,
-                category_id: categoryId ? Number(categoryId) : null,
-                urgency,
-                safety_risk: safetyRisk,
-                affected_units: affectedUnits,
-                essential_service_down: serviceDown,
-            });
+            // Multipart, because of the photos: booleans travel as 1/0 and an empty field as "" (read as null).
+            const form = new FormData();
+            if (place === 'my_unit') form.append('my_unit', '1');
+            else form.append('location_id', locationId);
+            form.append('title', title);
+            form.append('description', description);
+            form.append('category_id', categoryId);
+            form.append('urgency', urgency);
+            form.append('safety_risk', safetyRisk ? '1' : '0');
+            form.append('affected_units', affectedUnits);
+            form.append('essential_service_down', serviceDown ? '1' : '0');
+            photos.forEach((photo) => form.append('photos[]', photo));
+
+            const response = await api.post<{ data: ComplaintDetail }>('/complaints', form);
             navigate(`/resident/complaints/${response.data.data.id}`, { state: { justReported: response.data.data.reference_no } });
         } catch (caught) {
             setError(toApiError(caught));
@@ -205,6 +213,8 @@ export function ReportComplaintPage() {
                         <p key={field} className="text-sm text-red-700">{fieldError(field)}</p>
                     ))}
                 </fieldset>
+
+                <PhotoPicker photos={photos} onChange={setPhotos} error={photoError()} />
 
                 <SubmitButton busy={busy} label="Submit Complaint" busyLabel="Submitting…" />
             </form>

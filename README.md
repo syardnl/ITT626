@@ -4,7 +4,13 @@ ITT626 Back-End Technology project. Laravel 12 JSON API under `/api/v1` and a Re
 
 ## Requirements
 
-PHP 8.4 (with `pdo_mysql`), Composer, MariaDB 11.8, Node.js current LTS (`nvm use` reads `.nvmrc`; Vite 7 will not run on old Node), and [Mailpit](https://mailpit.axllent.org/) for local email.
+PHP 8.4 (with `pdo_mysql` and `gd`, for Complaint photos), Composer, MariaDB 11.8, Node.js current LTS (`nvm use` reads `.nvmrc`; Vite 7 will not run on old Node), and [Mailpit](https://mailpit.axllent.org/) for local email.
+
+PHP's default upload limits (2 MB a file, 8 MB a request) are below what Complaint photos need (five photos, 10 MB each). Raise them once:
+
+```bash
+printf 'upload_max_filesize = 10M\npost_max_size = 60M\n' | sudo tee /etc/php/8.4/cli/conf.d/99-itt626-uploads.ini
+```
 
 ## Setup
 

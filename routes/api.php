@@ -11,6 +11,7 @@ use App\Http\Controllers\Api\Auth\SessionController;
 use App\Http\Controllers\Api\CategoryController;
 use App\Http\Controllers\Api\ComplaintController;
 use App\Http\Controllers\Api\ComplaintFollowController;
+use App\Http\Controllers\Api\EvidenceController;
 use App\Http\Controllers\Api\LocationTreeController;
 use App\Http\Controllers\Api\MeController;
 use App\Http\Controllers\Api\OpenComplaintsController;
@@ -35,6 +36,7 @@ Route::middleware(['auth:sanctum', 'active'])->group(function () {
         Route::get('/categories', CategoryController::class);
         Route::get('/complaints', [ComplaintController::class, 'index']);
         Route::get('/complaints/{complaint}', [ComplaintController::class, 'show'])->whereNumber('complaint');
+        Route::get('/attachments/{evidence}', [EvidenceController::class, 'show'])->whereNumber('evidence');
     });
 
     Route::middleware('role:resident')->group(function () {

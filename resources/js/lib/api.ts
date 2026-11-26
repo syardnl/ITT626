@@ -291,12 +291,27 @@ export interface ComplaintSummary {
 
 export interface StatusTimelineEntry {
     type: 'status';
+    id: number;
     from_status: ComplaintStatus | null;
     to_status: ComplaintStatus;
     reason: string | null;
     actor: { id: number; name: string } | null;
     at: string;
 }
+
+export type CommentVisibility = 'public' | 'internal';
+
+/** Public Comments reach the reporter; Internal Comments only the management office. */
+export interface CommentTimelineEntry {
+    type: 'comment';
+    id: number;
+    visibility: CommentVisibility;
+    body: string;
+    author: { id: number; name: string; role: Role | null };
+    at: string;
+}
+
+export type TimelineEntry = StatusTimelineEntry | CommentTimelineEntry;
 
 /** A report photo, served by GET /attachments/{id} to the reporter, Managers and Administrators. */
 export interface EvidencePhoto {
@@ -325,7 +340,8 @@ export interface ComplaintDetail extends Complaint {
     priority_rule_version: number;
     initial_priority: Priority;
     evidence: EvidencePhoto[];
-    timeline: StatusTimelineEntry[];
+    /** Status changes and the comments this viewer may read, oldest first. */
+    timeline: TimelineEntry[];
     /** Present for the office (Manager, Administrator) only. */
     reporter?: { id: number; name: string; email: string; unit: { id: number; code: string } | null };
 }

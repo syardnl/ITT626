@@ -2,16 +2,18 @@
 
 namespace App\Http\Requests\Concerns;
 
+use Illuminate\Contracts\Database\Query\Expression;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Validation\Rule;
 
 /**
  * `?sort=field` (ascending) or `?sort=-field` (descending), where field is a
- * key of the request's sortable() map of public field name => column.
+ * key of the request's sortable() map of public field name => column, or an
+ * expression when the stored value does not sort in meaningful order.
  */
 trait AllowlistedSort
 {
-    /** @return array<string, string> public field name => column */
+    /** @return array<string, string|Expression> public field name => column or expression */
     abstract protected function sortable(): array;
 
     protected function sortRule(): array

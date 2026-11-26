@@ -60,6 +60,12 @@ class User extends Authenticatable
         return in_array($this->role(), $roles, true);
     }
 
+    /** Management-office staff: Managers and Administrators, who see every Complaint. */
+    public function isOffice(): bool
+    {
+        return $this->hasRole(Role::Manager, Role::Administrator);
+    }
+
     /** Replace whatever role the account held: an account holds exactly one. */
     public function assignRole(Role $role): void
     {

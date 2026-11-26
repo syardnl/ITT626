@@ -44,6 +44,15 @@ export function ComplaintDetailPage() {
                 <div><dt className="text-sm text-slate-600">Affected</dt><dd>{affectedUnitsLabel[complaint.affected_units]}</dd></div>
                 <div><dt className="text-sm text-slate-600">Essential service down</dt><dd>{complaint.essential_service_down ? 'Yes' : 'No'}</dd></div>
                 <div><dt className="text-sm text-slate-600">Reported</dt><dd>{formatDateTime(complaint.created_at)}</dd></div>
+                {complaint.reporter && (
+                    <div className="sm:col-span-2">
+                        <dt className="text-sm text-slate-600">Reported by</dt>
+                        <dd>
+                            {complaint.reporter.name} · {complaint.reporter.email}
+                            {complaint.reporter.unit && ` · Unit ${complaint.reporter.unit.code}`}
+                        </dd>
+                    </div>
+                )}
             </dl>
 
             <section>

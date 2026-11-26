@@ -64,6 +64,17 @@ class Location extends Model
         return false;
     }
 
+    /**
+     * Everything beneath a Block: its Floors and Common Areas, and the Units and
+     * Common Areas on those Floors. The tree is at most two levels deep under a Block.
+     */
+    public function scopeWithinBlock(Builder $query, int $blockId): void
+    {
+        $query->where(fn (Builder $within) => $within
+            ->where('parent_id', $blockId)
+            ->orWhereIn('parent_id', Location::query()->select('id')->where('parent_id', $blockId)->where('type', LocationType::Floor)));
+    }
+
     public function scopeActive(Builder $query): void
     {
         $query->where('active', true);

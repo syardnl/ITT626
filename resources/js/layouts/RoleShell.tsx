@@ -12,6 +12,7 @@ const navigation: Record<Role, { to: string; label: string }[]> = {
     ],
     manager: [
         { to: '/manager', label: 'Home' },
+        { to: '/manager/complaints', label: 'Complaints' },
         { to: '/manager/technicians', label: 'Technicians' },
     ],
     technician: [
@@ -20,6 +21,7 @@ const navigation: Record<Role, { to: string; label: string }[]> = {
     ],
     administrator: [
         { to: '/admin', label: 'Home' },
+        { to: '/admin/complaints', label: 'Complaints' },
         { to: '/admin/users', label: 'Accounts' },
         { to: '/admin/locations', label: 'Locations' },
         { to: '/admin/categories', label: 'Categories' },

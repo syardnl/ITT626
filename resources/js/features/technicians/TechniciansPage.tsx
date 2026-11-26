@@ -13,6 +13,7 @@ const types = Object.keys(technicianTypeLabel) as TechnicianType[];
 const availabilities = Object.keys(availabilityLabel) as Availability[];
 const filterNames = ['skill', 'availability', 'type', 'block'] as const;
 const emptyOptions: TechnicianFormOptions = { accounts: [], skills: [], blocks: [] };
+type OptionsStatus = 'loading' | 'ready' | 'failed';
 
 /** Technician profiles for Managers and Administrators: filter the team, create and edit profiles. */
 export function TechniciansPage() {
@@ -23,10 +24,17 @@ export function TechniciansPage() {
     const [loading, setLoading] = useState(true);
     const [selected, setSelected] = useState<Technician | 'new' | null>(null);
     const [flash, setFlash] = useState<string | null>(null);
+    const [optionsStatus, setOptionsStatus] = useState<OptionsStatus>('loading');
 
+    // Never rejects: a failure is shown on the page, and must not turn a successful save into an error.
     const loadOptions = useCallback(async () => {
-        const res = await api.get<{ data: TechnicianFormOptions }>('/technicians/form-options');
-        setOptions(res.data.data);
+        try {
+            const res = await api.get<{ data: TechnicianFormOptions }>('/technicians/form-options');
+            setOptions(res.data.data);
+            setOptionsStatus('ready');
+        } catch {
+            setOptionsStatus('failed');
+        }
     }, []);
 
     const load = useCallback(async () => {
@@ -95,7 +103,14 @@ export function TechniciansPage() {
                 </button>
             </div>
 
-            <form onSubmit={onFilter} role="search" aria-label="Filter Technicians" className="grid gap-3 rounded-lg border border-slate-200 bg-white p-4 sm:grid-cols-2 lg:grid-cols-4">
+            {optionsStatus === 'failed' && (
+                <Alert kind="error">The Skills, Blocks and Technician accounts could not be loaded, so filters and the profile form are incomplete. Reload the page to try again.</Alert>
+            )}
+
+            {/* Uncontrolled selects: re-mount when the URL or the option lists change, so they always show the filters applied. */}
+            <form
+                key={`${params.toString()}|${optionsStatus}`}
+                onSubmit={onFilter} role="search" aria-label="Filter Technicians" className="grid gap-3 rounded-lg border border-slate-200 bg-white p-4 sm:grid-cols-2 lg:grid-cols-4">
                 {select('skill', 'Skill', options.skills.map((s) => [String(s.id), s.name]))}
                 {select('availability', 'Availability', availabilities.map((a) => [a, availabilityLabel[a]]))}
                 {select('type', 'Type', types.map((t) => [t, technicianTypeLabel[t]]))}
@@ -152,9 +167,9 @@ export function TechniciansPage() {
                 </div>
 
                 <aside>
-                    {selected === 'new' && <ProfileForm key="new" options={options} onSaved={onSaved} onClose={() => choose(null)} />}
+                    {selected === 'new' && <ProfileForm key="new" options={options} optionsStatus={optionsStatus} onSaved={onSaved} onClose={() => choose(null)} />}
                     {selected && selected !== 'new' && (
-                        <ProfileForm key={selected.id} technician={selected} options={options} initialNotice={flash} onSaved={onSaved} onClose={() => choose(null)} />
+                        <ProfileForm key={selected.id} technician={selected} options={options} optionsStatus={optionsStatus} initialNotice={flash} onSaved={onSaved} onClose={() => choose(null)} />
                     )}
                     {!selected && (
                         <p className="rounded-lg border border-dashed border-slate-300 p-4 text-sm text-slate-600">
@@ -168,9 +183,10 @@ export function TechniciansPage() {
 }
 
 /** Create a profile (no `technician`) or edit one. On edit only the fields that changed are sent. */
-function ProfileForm({ technician, options, initialNotice = null, onSaved, onClose }: {
+function ProfileForm({ technician, options, optionsStatus, initialNotice = null, onSaved, onClose }: {
     technician?: Technician;
     options: TechnicianFormOptions;
+    optionsStatus: OptionsStatus;
     initialNotice?: string | null;
     onSaved: (technician: Technician, message: string) => Promise<void>;
     onClose: () => void;
@@ -281,7 +297,9 @@ function ProfileForm({ technician, options, initialNotice = null, onSaved, onClo
             {notice && <Alert kind="success">{notice}</Alert>}
             {error && Object.keys(error.errors).length === 0 && <Alert kind="error">{error.message}</Alert>}
 
-            {!technician && (
+            {!technician && optionsStatus === 'loading' && <p role="status" className="text-sm text-slate-600">Loading Technician accounts…</p>}
+            {!technician && optionsStatus === 'failed' && <p className="text-sm text-red-700">Technician accounts could not be loaded. Reload the page to try again.</p>}
+            {!technician && optionsStatus === 'ready' && (
                 options.accounts.length === 0 ? (
                     <p className="text-sm text-slate-600">Every active Technician account already has a profile. An Administrator creates Technician accounts first.</p>
                 ) : (

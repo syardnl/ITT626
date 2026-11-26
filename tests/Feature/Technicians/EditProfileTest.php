@@ -1,6 +1,7 @@
 <?php
 
 use App\Enums\Role;
+use App\Models\Category;
 
 require_once __DIR__.'/helpers.php';
 
@@ -52,6 +53,30 @@ it('switches between In-house and Contractor, keeping the company name rule', fu
     $patch(['type' => 'in_house'])->assertOk()
         ->assertJsonPath('data.type', 'in_house')
         ->assertJsonPath('data.company_name', null);
+});
+
+it('keeps a Skill deactivated since it was given, while other Skills change', function () {
+    ['technician' => $tariq, 'blockA' => $blockA, 'plumbing' => $plumbing, 'electrical' => $electrical, 'actor' => $manager] = techniciansSetup();
+    $lift = Category::where('key', 'lift')->firstOrFail();
+    $security = Category::where('key', 'security')->firstOrFail();
+    $id = createProfile(profileBody($tariq, $blockA['id'], [$plumbing, $lift->skill->id]))->json('data.id');
+    $this->actingAs(account(Role::Administrator));
+    $this->patchJson("/api/v1/admin/categories/{$lift->id}", ['active' => false])->assertOk();
+    $this->patchJson("/api/v1/admin/categories/{$security->id}", ['active' => false])->assertOk();
+    $this->actingAs($manager);
+
+    $this->patchJson("/api/v1/technicians/{$id}", ['skill_ids' => [$plumbing, $lift->skill->id, $electrical]])->assertOk()
+        ->assertJsonPath('data.skills.*.name', ['Electrical', 'Lift', 'Plumbing & Water Supply']);
+    $this->patchJson("/api/v1/technicians/{$id}", ['skill_ids' => [$plumbing, $security->skill->id]])
+        ->assertStatus(422)->assertJsonValidationErrors(['skill_ids.1' => 'Choose an active Skill.']);
+});
+
+it('answers a malformed type with 422, not a server error', function () {
+    ['technician' => $tariq, 'blockA' => $blockA, 'plumbing' => $plumbing] = techniciansSetup();
+    $id = createProfile(profileBody($tariq, $blockA['id'], [$plumbing]))->json('data.id');
+
+    $this->patchJson("/api/v1/technicians/{$id}", ['type' => ['contractor']])
+        ->assertStatus(422)->assertJsonValidationErrors('type');
 });
 
 it('answers 404 for a profile that does not exist', function () {

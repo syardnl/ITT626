@@ -28,7 +28,7 @@ it('refuses a profile for an account that is not a Technician, or a second profi
     $resident = account(Role::Resident);
 
     createProfile(profileBody($resident, $blockA['id'], [$plumbing]))
-        ->assertStatus(422)->assertJsonValidationErrors(['user_id' => 'Choose a Technician account.']);
+        ->assertStatus(422)->assertJsonValidationErrors(['user_id' => 'Choose an active Technician account.']);
     createProfile(profileBody($manager, $blockA['id'], [$plumbing]))
         ->assertStatus(422)->assertJsonValidationErrors('user_id');
     createProfile(profileBody($tariq, $blockA['id'], [$plumbing]))->assertCreated();
@@ -36,4 +36,25 @@ it('refuses a profile for an account that is not a Technician, or a second profi
         ->assertStatus(422)->assertJsonValidationErrors(['user_id' => 'This Technician already has a profile.']);
 
     expect(Technician::count())->toBe(1);
+});
+
+it('refuses a profile for a deactivated Technician account', function () {
+    ['blockA' => $blockA, 'plumbing' => $plumbing] = techniciansSetup();
+    $gone = account(Role::Technician, ['active' => false]);
+
+    createProfile(profileBody($gone, $blockA['id'], [$plumbing]))
+        ->assertStatus(422)->assertJsonValidationErrors(['user_id' => 'Choose an active Technician account.']);
+});
+
+it('keeps a profiled account a Technician: a change to another role is refused', function () {
+    ['technician' => $tariq, 'blockA' => $blockA, 'plumbing' => $plumbing] = techniciansSetup();
+    createProfile(profileBody($tariq, $blockA['id'], [$plumbing]))->assertCreated();
+    $this->actingAs(account(Role::Administrator));
+
+    $this->patchJson("/api/v1/admin/users/{$tariq->id}", ['role' => 'manager'])->assertStatus(409)
+        ->assertJsonPath('message', 'This account has a Technician profile, so it must stay a Technician. Give the person a separate account for the new role.');
+    $this->patchJson("/api/v1/admin/users/{$tariq->id}", ['name' => 'Tariq bin Ali', 'role' => 'technician'])->assertOk();
+
+    expect($tariq->refresh())->name->toBe('Tariq bin Ali')
+        ->and($tariq->role())->toBe(Role::Technician);
 });

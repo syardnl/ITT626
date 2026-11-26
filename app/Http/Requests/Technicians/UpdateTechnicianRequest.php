@@ -15,10 +15,12 @@ class UpdateTechnicianRequest extends FormRequest
     {
         /** @var Technician $technician */
         $technician = $this->route('technician');
-        $type = TechnicianType::tryFrom((string) $this->input('type', $technician->type->value));
+        // A malformed type (e.g. an array) is left for the type rule to reject.
+        $sentType = $this->input('type', $technician->type->value);
+        $type = is_string($sentType) ? TechnicianType::tryFrom($sentType) : null;
 
         return [
-            ...$this->profileRules('sometimes'),
+            ...$this->profileRules('sometimes', $technician->skills()->pluck('skills.id')->all()),
             'user_id' => ['prohibited'],
             // A Contractor must end up with a company name: sent now, or already on file.
             'company_name' => match (true) {

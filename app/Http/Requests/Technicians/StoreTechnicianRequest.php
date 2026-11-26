@@ -24,10 +24,10 @@ class StoreTechnicianRequest extends FormRequest
         ];
     }
 
-    /** The account must hold the Technician role. */
+    /** The account must be active and hold the Technician role. */
     private function technicianAccount(): Exists
     {
-        return Rule::exists('users', 'id')->where(fn (Builder $user) => $user->whereExists(
+        return Rule::exists('users', 'id')->where('active', true)->where(fn (Builder $user) => $user->whereExists(
             fn (Builder $role) => $role->from('role_user')
                 ->join('roles', 'roles.id', '=', 'role_user.role_id')
                 ->whereColumn('role_user.user_id', 'users.id')

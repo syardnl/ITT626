@@ -137,3 +137,16 @@ it('rolls back the whole edit when a deactivation sent with it is refused', func
     $this->getJson('/api/v1/admin/locations?type=unit')->assertJsonPath('data.0.name', 'Unit A-01-01');
     $this->getJson('/api/v1/admin/audit-logs?target_type=location&action=updated')->assertJsonCount(0, 'data');
 });
+
+it('sorts the Administrator list by an allowlisted field, descending with a leading minus', function () {
+    sampleBranch();
+    createLocation('block', null, 'B', 'Annex');
+    createLocation('block', null, 'C', 'Clubhouse block');
+    $codes = fn (string $sort) => $this->getJson("/api/v1/admin/locations?parent=root&sort={$sort}")->assertOk()->json('data.*.code');
+
+    expect($codes('name'))->toBe(['B', 'A', 'C'])
+        ->and($codes('-name'))->toBe(['C', 'A', 'B'])
+        ->and($codes('-code'))->toBe(['C', 'B', 'A']);
+
+    $this->getJson('/api/v1/admin/locations?sort=parent_id')->assertStatus(422)->assertJsonValidationErrors('sort');
+});

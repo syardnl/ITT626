@@ -100,3 +100,17 @@ it('refuses bulk updates and deletes of entries from application code', function
         ->and(fn () => AuditLog::query()->delete())->toThrow(LogicException::class)
         ->and(AuditLog::sole()->action)->toBe(AuditAction::SignedIn);
 });
+
+it('sorts by an allowlisted field, descending with a leading minus', function () {
+    entryAt('2026-11-20 01:00:00', AuditAction::Updated, $this->administrator);
+    entryAt('2026-11-22 01:00:00', AuditAction::SignedIn, $this->rina);
+    entryAt('2026-11-21 01:00:00', AuditAction::Created, $this->administrator);
+    $actions = fn (string $sort) => $this->getJson("/api/v1/admin/audit-logs?sort={$sort}")->assertOk()->json('data.*.action');
+
+    $this->actingAs($this->administrator);
+    expect($actions('created_at'))->toBe(['updated', 'created', 'auth.signed_in'])
+        ->and($actions('action'))->toBe(['auth.signed_in', 'created', 'updated'])
+        ->and($actions('-action'))->toBe(['updated', 'created', 'auth.signed_in']);
+
+    $this->getJson('/api/v1/admin/audit-logs?sort=changes')->assertStatus(422)->assertJsonValidationErrors('sort');
+});

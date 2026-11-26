@@ -2,6 +2,7 @@
 
 use App\Enums\Role;
 use App\Models\Property;
+use App\Models\Technician;
 use App\Models\User;
 use Database\Seeders\DatabaseSeeder;
 use Database\Seeders\DemoSeeder;
@@ -101,11 +102,23 @@ it('links the demo Resident to a Unit', function () {
     $this->getJson('/api/v1/me')->assertOk()->assertJsonPath('data.unit.code', 'A-01-01');
 });
 
-it('can be re-run without duplicating demo accounts', function () {
+it('gives the demo Technician a profile they can see', function () {
+    $this->seed(DemoSeeder::class);
+    $this->postJson('/api/v1/auth/login', ['email' => 'technician@demo.test', 'password' => 'demo-password']);
+
+    $this->getJson('/api/v1/technician/profile')->assertOk()
+        ->assertJsonPath('data.type', 'in_house')
+        ->assertJsonPath('data.availability', 'available')
+        ->assertJsonPath('data.home_block.code', 'A')
+        ->assertJsonPath('data.skills.*.name', ['Electrical', 'Plumbing & Water Supply']);
+});
+
+it('can be re-run without duplicating demo accounts or profiles', function () {
     $this->seed(DemoSeeder::class);
     $this->seed(DemoSeeder::class);
 
-    expect(User::count())->toBe(4);
+    expect(User::count())->toBe(4)
+        ->and(Technician::count())->toBe(1);
 });
 
 it('refuses to create demo accounts in production', function () {

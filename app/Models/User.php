@@ -9,6 +9,7 @@ use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 
@@ -38,6 +39,12 @@ class User extends Authenticatable
     public function unit(): BelongsTo
     {
         return $this->belongsTo(Location::class, 'unit_id');
+    }
+
+    /** The Technician profile, for Technician accounts that have one. */
+    public function technician(): HasOne
+    {
+        return $this->hasOne(Technician::class);
     }
 
     /** The account's single role. */

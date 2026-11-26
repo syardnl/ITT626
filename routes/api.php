@@ -11,6 +11,7 @@ use App\Http\Controllers\Api\Auth\SessionController;
 use App\Http\Controllers\Api\CategoryController;
 use App\Http\Controllers\Api\LocationTreeController;
 use App\Http\Controllers\Api\MeController;
+use App\Http\Controllers\Api\TechnicianController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -29,6 +30,17 @@ Route::middleware(['auth:sanctum', 'active'])->group(function () {
         Route::get('/me', MeController::class);
         Route::get('/locations', LocationTreeController::class);
         Route::get('/categories', CategoryController::class);
+    });
+
+    Route::middleware('role:technician')->get('/technician/profile', [TechnicianController::class, 'mine']);
+    Route::middleware('role:manager,technician,administrator')
+        ->get('/technicians/{technician}', [TechnicianController::class, 'show'])->whereNumber('technician');
+
+    Route::middleware('role:manager,administrator')->group(function () {
+        Route::get('/technicians', [TechnicianController::class, 'index']);
+        Route::get('/technicians/form-options', [TechnicianController::class, 'formOptions']);
+        Route::post('/technicians', [TechnicianController::class, 'store']);
+        Route::patch('/technicians/{technician}', [TechnicianController::class, 'update'])->whereNumber('technician');
     });
 
     Route::middleware('role:administrator')->prefix('admin')->group(function () {

@@ -6,14 +6,21 @@ import { landingPath, useAuth } from '../lib/auth';
 /** Section links per role; each later ticket adds its screens here. */
 const navigation: Record<Role, { to: string; label: string }[]> = {
     resident: [],
-    manager: [],
-    technician: [],
+    manager: [
+        { to: '/manager', label: 'Home' },
+        { to: '/manager/technicians', label: 'Technicians' },
+    ],
+    technician: [
+        { to: '/technician', label: 'Home' },
+        { to: '/technician/profile', label: 'My profile' },
+    ],
     administrator: [
         { to: '/admin', label: 'Home' },
         { to: '/admin/users', label: 'Accounts' },
         { to: '/admin/locations', label: 'Locations' },
         { to: '/admin/categories', label: 'Categories' },
         { to: '/admin/sla-targets', label: 'SLA Targets' },
+        { to: '/admin/technicians', label: 'Technicians' },
         { to: '/admin/audit-logs', label: 'Audit log' },
     ],
 };

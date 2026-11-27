@@ -14,6 +14,7 @@ use App\Models\Technician;
 use App\Models\User;
 use App\Services\Assignments\AssignmentDetails;
 use App\Services\Audit\AuditTrail;
+use Carbon\CarbonInterface;
 use Closure;
 use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Support\Facades\DB;
@@ -202,16 +203,17 @@ class ComplaintWorkflow
         $reason = $decision === VerificationDecision::Return ? $reason : null;   // only a Manager Rejection has one
 
         return $this->act($manager, $complaintId, $version, [ComplaintStatus::PendingVerification], function (Complaint $complaint) use ($manager, $decision, $reason) {
+            $now = now();   // one instant for the verification, the Resolution and the status row
             $record = $complaint->maintenanceRecords()->reorder('attempt', 'desc')->firstOrFail();
             $record->forceFill([
                 'verification_outcome' => $decision->outcome(),
                 'verification_reason' => $reason,
                 'verified_by' => $manager->id,
-                'verified_at' => now(),
+                'verified_at' => $now,
             ])->save();
 
             // The reason stays off the status row, which the reporter reads; staff see it as a verification entry.
-            $this->moveTo($complaint, $decision->status(), $manager, $decision === VerificationDecision::Approve ? ['resolved_at' => now()] : []);
+            $this->moveTo($complaint, $decision->status(), $manager, $decision === VerificationDecision::Approve ? ['resolved_at' => $now] : [], at: $now);
             $this->audit->recordChange($decision->auditAction(), $complaint, metadata: array_filter([
                 'maintenance_record_id' => $record->id,
                 'reason' => $reason,
@@ -318,10 +320,14 @@ class ComplaintWorkflow
     }
 
     /** Saves the new status (and any timestamps), bumps the version and appends the history row. */
-    private function moveTo(Complaint $complaint, ComplaintStatus $to, ?User $actor, array $attributes = [], ?string $reason = null): void
+    private function moveTo(Complaint $complaint, ComplaintStatus $to, ?User $actor, array $attributes = [], ?string $reason = null, ?CarbonInterface $at = null): void
     {
         $from = $complaint->status;
         $complaint->forceFill([...$attributes, 'status' => $to, 'version' => $complaint->version + 1])->save();
-        $complaint->statusHistory()->create(['changed_by' => $actor?->id, 'from_status' => $from, 'to_status' => $to, 'reason' => $reason]);
+        $row = $complaint->statusHistory()->make(['changed_by' => $actor?->id, 'from_status' => $from, 'to_status' => $to, 'reason' => $reason]);
+        if ($at !== null) {
+            $row->created_at = $at;   // the same instant as the change's other timestamps
+        }
+        $row->save();
     }
 }

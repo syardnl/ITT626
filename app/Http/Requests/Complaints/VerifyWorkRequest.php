@@ -38,7 +38,8 @@ class VerifyWorkRequest extends FormRequest
     {
         return [
             'decision' => ['required', Rule::enum(VerificationDecision::class)],
-            'reason' => ['nullable', 'string', 'max:1000', Rule::requiredIf(fn () => $this->input('decision') === VerificationDecision::Return->value)],
+            // Only a return keeps a reason; one sent with an approval is ignored, not validated.
+            'reason' => ['exclude_unless:decision,return', 'required', 'string', 'max:1000'],
             'version' => ['required', 'integer'],
         ];
     }
@@ -55,7 +56,9 @@ class VerifyWorkRequest extends FormRequest
 
     public function reason(): ?string
     {
-        return $this->validated('reason') ?: null;
+        $reason = $this->validated('reason');
+
+        return $reason === null || $reason === '' ? null : $reason;   // never `?:`: "0" is a reason
     }
 
     public function version(): int

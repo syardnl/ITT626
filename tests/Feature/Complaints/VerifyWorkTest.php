@@ -90,6 +90,29 @@ it('requires a reason to return the work, and a known decision', function () {
     verifyWork($complaint, ['decision' => 'maybe'])->assertUnprocessable()->assertJsonValidationErrors('decision');
 });
 
+it('keeps a reason of "0" when returning, and ignores a reason sent with an approval', function () {
+    ['complaint' => $complaint] = pendingVerificationSetup();
+
+    verifyWork($complaint, ['decision' => 'return', 'reason' => '0'])->assertOk()
+        ->assertJsonPath('data.maintenance_records.0.verification_reason', '0');
+});
+
+it('approves even when a leftover reason is sent', function () {
+    ['complaint' => $complaint] = pendingVerificationSetup();
+
+    verifyWork($complaint, ['decision' => 'approve', 'reason' => str_repeat('x', 1001)])->assertOk()
+        ->assertJsonPath('data.maintenance_records.0.verification_reason', null);
+});
+
+it('records the verification, the Resolution and the status change at one instant', function () {
+    ['complaint' => $complaint] = pendingVerificationSetup();
+
+    $data = verifyWork($complaint, ['decision' => 'approve'])->assertOk()->json('data');
+    $status = collect($data['timeline'])->where('type', 'status')->last();
+    expect($data['resolved_at'])->toBe($data['maintenance_records'][0]['verified_at'])
+        ->and($status['at'])->toBe($data['resolved_at']);
+});
+
 it('records the verification in the audit log', function () {
     ['complaint' => $complaint, 'manager' => $manager, 'record' => $record] = pendingVerificationSetup();
     verifyWork($complaint, ['decision' => 'return', 'reason' => 'Door still sticks.']);

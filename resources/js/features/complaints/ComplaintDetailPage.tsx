@@ -68,7 +68,8 @@ export function ComplaintDetailPage() {
             {account?.role === 'manager' && (
                 <>
                     <ReviewPanel complaint={complaint} onChanged={setComplaint} />
-                    <VerifyWorkPanel complaint={complaint} onChanged={setComplaint} />
+                    {/* Keyed by Complaint, so a typed reason never carries over to another one. */}
+                    <VerifyWorkPanel key={complaint.id} complaint={complaint} onChanged={setComplaint} />
                     <AssignmentPanel complaint={complaint} onChanged={setComplaint} />
                 </>
             )}

@@ -89,7 +89,7 @@ export function VerifyWorkPanel({ complaint, onChanged }: Props) {
                     <button type="button" onClick={() => send('approve')} disabled={busy} className="min-h-11 rounded-md bg-green-700 px-5 font-medium text-white hover:bg-green-800 focus:outline-2 focus:outline-offset-2 focus:outline-green-600 disabled:opacity-60">
                         {busy ? 'Approving…' : 'Approve: mark Resolved'}
                     </button>
-                    <button type="button" onClick={() => setReturning(true)} className="min-h-11 rounded-md border border-amber-600 bg-white px-4 font-medium text-amber-900 hover:bg-amber-50 focus:outline-2 focus:outline-offset-2 focus:outline-amber-600">
+                    <button type="button" onClick={() => setReturning(true)} disabled={busy} className="min-h-11 rounded-md border border-amber-600 bg-white px-4 font-medium text-amber-900 hover:bg-amber-50 focus:outline-2 focus:outline-offset-2 focus:outline-amber-600 disabled:opacity-60">
                         Return the work
                     </button>
                 </div>

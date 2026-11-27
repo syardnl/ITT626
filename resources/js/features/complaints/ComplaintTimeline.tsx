@@ -26,7 +26,10 @@ export function ComplaintTimeline({ complaintId, timeline, commenting, onComment
                         {entry.type === 'status' ? (
                             <>
                                 <p className="font-medium">{complaintStatusLabel[entry.to_status]}</p>
-                                <p className="text-sm text-slate-600">{formatDateTime(entry.at)}{entry.actor && ` · ${entry.actor.name}`}</p>
+                                <p className="text-sm text-slate-600">
+                                    {formatDateTime(entry.at)}
+                                    {entry.actor ? ` · ${entry.actor.name}` : entry.to_status === 'closed' && ' · Closed automatically: no answer within 7 days of the repair'}
+                                </p>
                                 {entry.reason && <p className="text-sm">{entry.reason}</p>}
                             </>
                         ) : entry.type === 'classification' ? (

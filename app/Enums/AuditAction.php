@@ -20,4 +20,6 @@ enum AuditAction: string
     case WorkCompleted = 'complaint.work_completed';
     case WorkApproved = 'complaint.work_approved';
     case WorkReturned = 'complaint.work_returned';
+    case Closed = 'complaint.closed';
+    case ResidentReturned = 'complaint.resident_returned';
 }

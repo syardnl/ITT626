@@ -33,6 +33,8 @@ const actions: Record<string, string> = {
     'complaint.work_completed': 'Work completed',
     'complaint.work_approved': 'Work approved',
     'complaint.work_returned': 'Work returned (Manager Rejection)',
+    'complaint.closed': 'Closed',
+    'complaint.resident_returned': 'Returned by the Resident (Resident Return)',
 };
 
 const filterNames = ['actor', 'action', 'target_type', 'from', 'to'] as const;

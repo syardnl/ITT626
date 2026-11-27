@@ -25,7 +25,7 @@ class ComplaintDetailResource extends ComplaintResource
     public const RELATIONS = ['location', 'category', 'statusHistory.actor', 'reporter.unit', 'evidence.uploader', 'comments.author.roles', 'repairCycles',
         'classificationChanges.actor', 'classificationChanges.fromCategory', 'classificationChanges.toCategory',
         'assignments.technician.user', 'assignments.assigner',
-        'maintenanceRecords.technician.user', 'maintenanceRecords.verifier', 'maintenanceRecords.expenses', 'maintenanceRecords.photos', 'maintenanceRecords.repairCycle', 'evidence.maintenanceRecord.technician'];
+        'maintenanceRecords.technician.user', 'maintenanceRecords.verifier', 'maintenanceRecords.expenses', 'maintenanceRecords.photos', 'maintenanceRecords.repairCycle', 'evidence.maintenanceRecord.technician', 'rating'];
 
     public function toArray(Request $request): array
     {
@@ -54,6 +54,15 @@ class ComplaintDetailResource extends ComplaintResource
             'initial_priority' => $this->initial_priority->value,
             'reviewed_at' => $this->reviewed_at?->utc()->format('Y-m-d\TH:i:s\Z'),
             'resolved_at' => $this->resolved_at?->utc()->format('Y-m-d\TH:i:s\Z'),
+            'closed_at' => $this->closed_at?->utc()->format('Y-m-d\TH:i:s\Z'),
+            // The office and the reporter who gave it; never the Technician (story 38).
+            'rating' => $this->when($request->user()->isOffice() || $this->isReportedBy($request->user()), fn () => $this->rating ? [
+                'score' => $this->rating->score,
+                'feedback' => $this->rating->feedback,
+                'rated_at' => $this->rating->created_at->utc()->format('Y-m-d\TH:i:s\Z'),
+            ] : null),
+            // The reporter may confirm the repair or return it while it is Resolved.
+            'can_confirm_resolution' => $this->when($this->isReportedBy($request->user()), fn () => $this->status === ComplaintStatus::Resolved),
             // Sent back with a workflow action, so a change made meanwhile by someone else is refused (409).
             'version' => $this->version,
             'evidence' => $this->evidence->filter(fn (Evidence $photo) => $photo->isShownTo($request->user()))->values()->map(fn (Evidence $photo) => [

@@ -18,5 +18,6 @@ enum AuditAction: string
     case Reassigned = 'complaint.reassigned';
     case WorkStarted = 'complaint.work_started';
     case WorkCompleted = 'complaint.work_completed';
-    case Verified = 'complaint.verified';
+    case WorkApproved = 'complaint.work_approved';
+    case WorkReturned = 'complaint.work_returned';
 }

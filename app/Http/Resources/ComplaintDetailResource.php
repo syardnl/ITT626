@@ -136,9 +136,9 @@ class ComplaintDetailResource extends ComplaintResource
     }
 
     /**
-     * Status changes, classifications and Assignments (office only) and the comments this viewer may
-     * read, oldest first. Entries at the same second keep the order they were stored in: status
-     * changes, then classifications, then Assignments, then comments.
+     * Status changes, classifications and Assignments (office only), verifications (staff) and the
+     * comments this viewer may read, oldest first. Entries at the same second keep the order they
+     * were stored in: status changes, classifications, Assignments, verifications, then comments.
      */
     private function timelineFor(User $viewer): array
     {
@@ -153,12 +153,18 @@ class ComplaintDetailResource extends ComplaintResource
             'at' => $assignment->assigned_at->getTimestamp(), 'kind' => 2, 'id' => $assignment->id,
             'entry' => TimelineEntry::assignment($assignment, $index > 0 ? $this->assignments[$index - 1] : null),
         ]) : collect();
+        // Staff only: a Manager Rejection's reason is not for the reporter.
+        $verifications = $viewer->isStaff() ? $this->maintenanceRecords
+            ->filter(fn (MaintenanceRecord $record) => $record->verified_at !== null && $record->isShownTo($viewer))
+            ->map(fn (MaintenanceRecord $record) => [
+                'at' => $record->verified_at->getTimestamp(), 'kind' => 3, 'id' => $record->id, 'entry' => TimelineEntry::verification($record),
+            ]) : collect();
         $comments = $this->comments->filter(fn (Comment $comment) => $comment->isVisibleTo($viewer, $this->resource))->map(fn (Comment $comment) => [
-            'at' => $comment->created_at->getTimestamp(), 'kind' => 3, 'id' => $comment->id, 'entry' => TimelineEntry::comment($comment),
+            'at' => $comment->created_at->getTimestamp(), 'kind' => 4, 'id' => $comment->id, 'entry' => TimelineEntry::comment($comment),
         ]);
 
         // `kind` breaks a same-second tie.
-        return $statuses->concat($classifications)->concat($assignments)->concat($comments)
+        return $statuses->concat($classifications)->concat($assignments)->concat($verifications)->concat($comments)
             ->sortBy([['at', 'asc'], ['kind', 'asc'], ['id', 'asc']])
             ->pluck('entry')
             ->values()

@@ -337,7 +337,18 @@ export interface AssignmentTimelineEntry {
     at: string;
 }
 
-export type TimelineEntry = StatusTimelineEntry | ClassificationTimelineEntry | AssignmentTimelineEntry | CommentTimelineEntry;
+/** Staff only: a Manager approving a Maintenance Record or returning it with a reason (a Manager Rejection). */
+export interface VerificationTimelineEntry {
+    type: 'verification';
+    id: number;
+    attempt: number;
+    outcome: 'approved' | 'returned';
+    reason: string | null;
+    actor: { id: number; name: string };
+    at: string;
+}
+
+export type TimelineEntry = StatusTimelineEntry | ClassificationTimelineEntry | AssignmentTimelineEntry | VerificationTimelineEntry | CommentTimelineEntry;
 
 /** A Complaint's current Assignment, as the office sees it. */
 export interface CurrentAssignment {

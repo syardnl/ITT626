@@ -10,6 +10,17 @@ enum VerificationDecision: string
     case Approve = 'approve';
     case Return = 'return';
 
+    /** Where the Complaint goes: Resolved on approval, Returned on a Manager Rejection. */
+    public function status(): ComplaintStatus
+    {
+        return $this === self::Approve ? ComplaintStatus::Resolved : ComplaintStatus::Returned;
+    }
+
+    public function auditAction(): AuditAction
+    {
+        return $this === self::Approve ? AuditAction::WorkApproved : AuditAction::WorkReturned;
+    }
+
     /** The verification_outcome this decision leaves on the Maintenance Record. */
     public function outcome(): string
     {

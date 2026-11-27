@@ -19,6 +19,7 @@ export function VerifyWorkPanel({ complaint, onChanged }: Props) {
     if (complaint.status !== 'pending_verification' || !record || !isStaffRecord(record)) return null;
 
     const photos = recordPhotos(complaint, record);
+    const before = photos.filter((photo) => photo.type === 'before_photo');
     const reasonError = error?.errors.reason?.[0];
 
     async function send(decision: 'approve' | 'return', event?: FormEvent) {
@@ -46,8 +47,8 @@ export function VerifyWorkPanel({ complaint, onChanged }: Props) {
             <div className="grid gap-4 sm:grid-cols-2">
                 <div>
                     <h3 className="text-sm font-medium">Before</h3>
-                    {photos.some((photo) => photo.type === 'before_photo')
-                        ? <PhotoGrid photos={photos.filter((photo) => photo.type === 'before_photo')} attempt={record.attempt} />
+                    {before.length > 0
+                        ? <PhotoGrid photos={before} attempt={record.attempt} />
                         : <p className="text-sm text-slate-600">No Before photos.</p>}
                 </div>
                 <div>

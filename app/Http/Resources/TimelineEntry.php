@@ -5,9 +5,10 @@ namespace App\Http\Resources;
 use App\Models\Assignment;
 use App\Models\ClassificationChange;
 use App\Models\Comment;
+use App\Models\MaintenanceRecord;
 use App\Models\StatusChange;
 
-/** One line of a Complaint's timeline: a status change, a classification, an Assignment or a comment, with when it happened in UTC. */
+/** One line of a Complaint's timeline: a status change, a classification, an Assignment, a verification or a comment, with when it happened in UTC. */
 final class TimelineEntry
 {
     public static function status(StatusChange $change): array
@@ -53,6 +54,20 @@ final class TimelineEntry
             'override_reason' => $assignment->override_reason,
             'actor' => ['id' => $assignment->assigner->id, 'name' => $assignment->assigner->name],
             'at' => $assignment->assigned_at->utc()->format('Y-m-d\TH:i:s\Z'),
+        ];
+    }
+
+    /** Staff only: a Manager approving a Maintenance Record, or returning it with a reason (a Manager Rejection). */
+    public static function verification(MaintenanceRecord $record): array
+    {
+        return [
+            'type' => 'verification',
+            'id' => $record->id,
+            'attempt' => $record->attempt,
+            'outcome' => $record->verification_outcome,
+            'reason' => $record->verification_reason,
+            'actor' => ['id' => $record->verifier->id, 'name' => $record->verifier->name],
+            'at' => $record->verified_at->utc()->format('Y-m-d\TH:i:s\Z'),
         ];
     }
 

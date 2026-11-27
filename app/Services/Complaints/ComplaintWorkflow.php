@@ -199,22 +199,22 @@ class ComplaintWorkflow
      */
     public function verify(User $manager, int $complaintId, VerificationDecision $decision, ?string $reason, ?int $version): Complaint
     {
+        $reason = $decision === VerificationDecision::Return ? $reason : null;   // only a Manager Rejection has one
+
         return $this->act($manager, $complaintId, $version, [ComplaintStatus::PendingVerification], function (Complaint $complaint) use ($manager, $decision, $reason) {
             $record = $complaint->maintenanceRecords()->reorder('attempt', 'desc')->firstOrFail();
             $record->forceFill([
                 'verification_outcome' => $decision->outcome(),
-                'verification_reason' => $decision === VerificationDecision::Return ? $reason : null,
+                'verification_reason' => $reason,
                 'verified_by' => $manager->id,
                 'verified_at' => now(),
             ])->save();
 
-            $decision === VerificationDecision::Approve
-                ? $this->moveTo($complaint, ComplaintStatus::Resolved, $manager, ['resolved_at' => now()])
-                : $this->moveTo($complaint, ComplaintStatus::Returned, $manager);
-            $this->audit->recordChange(AuditAction::Verified, $complaint, metadata: array_filter([
-                'decision' => $decision->value,
+            // The reason stays off the status row, which the reporter reads; staff see it as a verification entry.
+            $this->moveTo($complaint, $decision->status(), $manager, $decision === VerificationDecision::Approve ? ['resolved_at' => now()] : []);
+            $this->audit->recordChange($decision->auditAction(), $complaint, metadata: array_filter([
                 'maintenance_record_id' => $record->id,
-                'reason' => $decision === VerificationDecision::Return ? $reason : null,
+                'reason' => $reason,
             ], fn ($value) => $value !== null));
         }, fn (Complaint $complaint) => self::verificationRefusal($complaint->status));
     }

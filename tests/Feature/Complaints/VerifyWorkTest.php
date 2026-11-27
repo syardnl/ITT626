@@ -24,7 +24,13 @@ it('approves the work: Pending Verification becomes Resolved and the record is v
         ->and(collect(timelineOf($complaint, 'status'))->last())->toMatchArray([
             'from_status' => 'pending_verification', 'to_status' => 'resolved',
             'actor' => ['id' => $manager->id, 'name' => 'Maya Manager'],
-        ]);
+        ])
+        ->and(timelineOf($complaint, 'verification'))->toHaveCount(1);
+
+    $this->actingAs(account(Role::Administrator));
+    $entry = $this->getJson('/api/v1/admin/audit-logs?action=complaint.work_approved')->assertOk()->json('data.0');
+    expect($entry['changes']['status'])->toBe(['from' => 'pending_verification', 'to' => 'resolved'])
+        ->and($entry['changes'])->toHaveKey('resolved_at');
 });
 
 it('shows the reporter the approved repair once Resolved', function () {
@@ -39,13 +45,17 @@ it('shows the reporter the approved repair once Resolved', function () {
 
 it('returns the work with a reason to the same Technician, in the same Repair Cycle', function () {
     ['complaint' => $complaint, 'tariq' => $tariq] = pendingVerificationSetup();
+    $assignmentId = $this->getJson("/api/v1/complaints/{$complaint}")->json('data.assignment.id');
 
     $data = verifyWork($complaint, ['decision' => 'return', 'reason' => 'The door still sticks on floor 3.'])->assertOk()
+        ->assertJsonPath('data.assignment.id', $assignmentId)
         ->assertJsonPath('data.status', 'returned')
         ->assertJsonPath('data.resolved_at', null)
         ->assertJsonPath('data.assignment.technician.id', $tariq['id'])
         ->json('data');
 
+    expect(collect(timelineOf($complaint, 'status'))->last())->toMatchArray(['from_status' => 'pending_verification', 'to_status' => 'returned', 'reason' => null])
+        ->and(timelineOf($complaint, 'verification')[0])->toMatchArray(['outcome' => 'returned', 'reason' => 'The door still sticks on floor 3.', 'attempt' => 1]);
     expect($data['repair_cycles'])->toHaveCount(1)
         ->and($data['maintenance_records'][0])->toMatchArray([
             'verification_outcome' => 'returned', 'verification_reason' => 'The door still sticks on floor 3.',
@@ -68,7 +78,8 @@ it('keeps a Manager Rejection’s reason from the reporter', function () {
     $this->actingAs($rina);
     $response = $this->getJson("/api/v1/complaints/{$complaint}")->assertOk()->assertJsonPath('data.status', 'returned');
     expect($response->getContent())->not->toContain('Sloppy work')
-        ->and($response->json('data.maintenance_records'))->toBe([]);
+        ->and($response->json('data.maintenance_records'))->toBe([])
+        ->and(timelineOf($complaint, 'verification'))->toBe([]);
 });
 
 it('requires a reason to return the work, and a known decision', function () {
@@ -84,11 +95,11 @@ it('records the verification in the audit log', function () {
     verifyWork($complaint, ['decision' => 'return', 'reason' => 'Door still sticks.']);
 
     $this->actingAs(account(Role::Administrator));
-    $entry = $this->getJson('/api/v1/admin/audit-logs?action=complaint.verified')->assertOk()->json('data.0');
+    $entry = $this->getJson('/api/v1/admin/audit-logs?action=complaint.work_returned')->assertOk()->json('data.0');
     expect($entry)->toMatchArray(['target_type' => 'complaint', 'target_id' => $complaint])
         ->and($entry['actor']['id'])->toBe($manager->id)
         ->and($entry['changes']['status'])->toBe(['from' => 'pending_verification', 'to' => 'returned'])
-        ->and($entry['metadata'])->toBe(['decision' => 'return', 'maintenance_record_id' => $record['id'], 'reason' => 'Door still sticks.']);
+        ->and($entry['metadata'])->toBe(['maintenance_record_id' => $record['id'], 'reason' => 'Door still sticks.']);
 });
 
 it('refuses verification outside Pending Verification', function (ComplaintStatus $status) {

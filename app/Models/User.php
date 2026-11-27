@@ -66,6 +66,15 @@ class User extends Authenticatable
         return $this->hasRole(Role::Manager, Role::Administrator);
     }
 
+    /**
+     * Managers, Administrators and Technicians: on a Complaint they may open, they see the reporter's
+     * name and Unit. A Technician only ever opens their own (Complaint::visibleTo).
+     */
+    public function isStaff(): bool
+    {
+        return $this->isOffice() || $this->hasRole(Role::Technician);
+    }
+
     /** The Block the Resident's Unit is in (Unit > Floor > Block), or null without a Unit. */
     public function blockId(): ?int
     {

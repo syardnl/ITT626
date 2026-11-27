@@ -18,6 +18,7 @@ use App\Http\Controllers\Api\LocationTreeController;
 use App\Http\Controllers\Api\MeController;
 use App\Http\Controllers\Api\OpenComplaintsController;
 use App\Http\Controllers\Api\TechnicianController;
+use App\Http\Controllers\Api\TechnicianTaskController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -46,7 +47,7 @@ Route::middleware(['auth:sanctum', 'active'])->group(function () {
         Route::post('/complaints/{complaint}/follow', [ComplaintFollowController::class, 'store'])->whereNumber('complaint');
         Route::delete('/complaints/{complaint}/follow', [ComplaintFollowController::class, 'destroy'])->whereNumber('complaint');
     });
-    Route::middleware('role:resident,manager')
+    Route::middleware('role:resident,manager,technician')
         ->post('/complaints/{complaint}/comments', [ComplaintCommentController::class, 'store'])->whereNumber('complaint');
     Route::middleware('role:resident,manager')
         ->get('/locations/{location}/open-complaints', OpenComplaintsController::class)->whereNumber('location');
@@ -58,7 +59,11 @@ Route::middleware(['auth:sanctum', 'active'])->group(function () {
         Route::post('/complaints/{complaint}/assignments', [ComplaintWorkflowController::class, 'assign'])->whereNumber('complaint');
     });
 
-    Route::middleware('role:technician')->get('/technician/profile', [TechnicianController::class, 'mine']);
+    Route::middleware('role:technician')->group(function () {
+        Route::get('/technician/profile', [TechnicianController::class, 'mine']);
+        Route::get('/technician/tasks', TechnicianTaskController::class);
+        Route::post('/complaints/{complaint}/start-work', [ComplaintWorkflowController::class, 'startWork'])->whereNumber('complaint');
+    });
     Route::middleware('role:manager,technician,administrator')
         ->get('/technicians/{technician}', [TechnicianController::class, 'show'])->whereNumber('technician');
 

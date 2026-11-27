@@ -2,6 +2,8 @@
 
 namespace App\Http\Resources;
 
+use App\Enums\ComplaintStatus;
+use App\Enums\Role;
 use App\Models\Assignment;
 use App\Models\ClassificationChange;
 use App\Models\Comment;
@@ -13,8 +15,8 @@ use App\Models\User;
 use Illuminate\Http\Request;
 
 /**
- * A Complaint opened in full: the answers, the Priority Score, the photos and the timeline of status changes and comments;
- * the office (Manager, Administrator) also sees who reported it. @mixin Complaint
+ * A Complaint opened in full: the answers, the Priority Score, the photos and the timeline of status changes and comments.
+ * Staff also see who reported it (the office with their email); the assigned Technician sees what they may do. @mixin Complaint
  */
 class ComplaintDetailResource extends ComplaintResource
 {
@@ -32,10 +34,11 @@ class ComplaintDetailResource extends ComplaintResource
                 'name' => $this->category->name,
                 ...($request->user()->isOffice() ? ['default_priority' => $this->category->default_priority->value] : []),
             ] : null,
-            'reporter' => $this->when($request->user()->isOffice(), fn () => [
+            // The office and the Technician; only the office sees the email.
+            'reporter' => $this->when($request->user()->isStaff(), fn () => [
                 'id' => $this->reporter->id,
                 'name' => $this->reporter->name,
-                'email' => $this->reporter->email,
+                ...($request->user()->isOffice() ? ['email' => $this->reporter->email] : []),
                 'unit' => $this->reporter->unit ? ['id' => $this->reporter->unit->id, 'code' => $this->reporter->unit->code] : null,
             ]),
             'description' => $this->description,
@@ -63,8 +66,14 @@ class ComplaintDetailResource extends ComplaintResource
                 'number' => $cycle->number,
                 'started_at' => $cycle->started_at->utc()->format('Y-m-d\TH:i:s\Z'),
             ])->all()),
-            // The office sees whose work it is now; Technicians see their own from the next ticket on.
+            // The office sees whose work it is now; a Technician gets assigned_to_you instead.
             'assignment' => $this->when($request->user()->isOffice(), fn () => $this->currentAssignmentEntry()),
+            // Staff only: when the Technician first started the latest Assignment's work.
+            'started_at' => $this->when($request->user()->isStaff(), fn () => $this->latestAssignment()?->started_at?->utc()->format('Y-m-d\TH:i:s\Z')),
+            // A Technician's own Complaint: they may comment while it is theirs, and start work when ComplaintStatus::STARTABLE.
+            'assigned_to_you' => $this->when($request->user()->hasRole(Role::Technician), fn () => $this->isAssignedTo($request->user())),
+            'can_start_work' => $this->when($request->user()->hasRole(Role::Technician), fn () => $this->isAssignedTo($request->user())
+                && in_array($this->status, ComplaintStatus::STARTABLE, true)),
             'timeline' => $this->timelineFor($request->user()),
         ];
     }
@@ -100,7 +109,7 @@ class ComplaintDetailResource extends ComplaintResource
             'at' => $assignment->assigned_at->getTimestamp(), 'kind' => 2, 'id' => $assignment->id,
             'entry' => TimelineEntry::assignment($assignment, $index > 0 ? $this->assignments[$index - 1] : null),
         ]) : collect();
-        $comments = $this->comments->filter(fn (Comment $comment) => $comment->isVisibleTo($viewer))->map(fn (Comment $comment) => [
+        $comments = $this->comments->filter(fn (Comment $comment) => $comment->isVisibleTo($viewer, $this->resource))->map(fn (Comment $comment) => [
             'at' => $comment->created_at->getTimestamp(), 'kind' => 3, 'id' => $comment->id, 'entry' => TimelineEntry::comment($comment),
         ]);
 

@@ -30,9 +30,12 @@ class Comment extends Model
         return $this->belongsTo(User::class, 'author_id');
     }
 
-    /** Internal Comments: Managers, and Administrators read-only (Phase 3 adds the assigned Technician). Followers never reach a timeline. */
-    public function isVisibleTo(User $viewer): bool
+    /**
+     * Internal Comments: Managers, Administrators read-only, and the Technician holding the
+     * Complaint's latest Assignment (Complaint::showsInternalCommentsTo). Followers never reach a timeline.
+     */
+    public function isVisibleTo(User $viewer, Complaint $on): bool
     {
-        return $this->visibility === CommentVisibility::Public || $viewer->isOffice();
+        return $this->visibility === CommentVisibility::Public || $on->showsInternalCommentsTo($viewer);
     }
 }

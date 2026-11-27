@@ -9,6 +9,7 @@ import { useAuth } from '../../lib/auth';
 import { ComplaintTimeline } from './ComplaintTimeline';
 import { AssignmentPanel } from './AssignmentPanel';
 import { ReviewPanel } from './ReviewPanel';
+import { StartWorkPanel } from './StartWorkPanel';
 
 export function ComplaintDetailPage() {
     const { id } = useParams();
@@ -55,7 +56,7 @@ export function ComplaintDetailPage() {
                     <div className="sm:col-span-2">
                         <dt className="text-sm text-slate-600">Reported by</dt>
                         <dd>
-                            {complaint.reporter.name} · {complaint.reporter.email}
+                            {complaint.reporter.name}{complaint.reporter.email && ` · ${complaint.reporter.email}`}
                             {complaint.reporter.unit && ` · Unit ${complaint.reporter.unit.code}`}
                         </dd>
                     </div>
@@ -68,6 +69,7 @@ export function ComplaintDetailPage() {
                     <AssignmentPanel complaint={complaint} onChanged={setComplaint} />
                 </>
             )}
+            {account?.role === 'technician' && <StartWorkPanel complaint={complaint} onChanged={setComplaint} />}
 
             <section>
                 <h2 className="text-lg font-semibold">Description</h2>
@@ -95,7 +97,9 @@ export function ComplaintDetailPage() {
             <ComplaintTimeline
                 complaintId={complaint.id}
                 timeline={complaint.timeline}
-                commenting={complaint.status === 'closed' ? null : account?.role === 'manager' ? 'manager' : account?.role === 'resident' ? 'reporter' : null}
+                commenting={complaint.status === 'closed' ? null
+                    : account?.role === 'manager' || complaint.assigned_to_you ? 'manager_or_assignee'
+                    : account?.role === 'resident' ? 'reporter' : null}
                 onCommented={(entry) => setComplaint({ ...complaint, timeline: [...complaint.timeline, entry] })}
             />
         </article>

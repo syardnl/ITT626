@@ -107,6 +107,26 @@ class ComplaintWorkflow
     }
 
     /**
+     * Assigned or Returned → In Progress, by the Technician holding the current Assignment. The
+     * Assignment keeps the first start time; starting again after a return does not move it.
+     */
+    public function startWork(User $technician, int $complaintId, ?int $version): Complaint
+    {
+        return $this->act($technician, $complaintId, $version, ComplaintStatus::STARTABLE, function (Complaint $complaint) use ($technician) {
+            // act() found it through visibleTo, so the latest Assignment is theirs; a startable status is
+            // not Closed, so that Assignment has not ended. A reassignment meanwhile answers 404 there.
+            $assignment = $complaint->currentAssignment;
+            $assignment->started_at ??= now();
+            $assignment->save();
+            $this->moveTo($complaint, ComplaintStatus::InProgress, $technician);
+            $this->audit->recordChange(AuditAction::WorkStarted, $complaint, metadata: [
+                'assignment_id' => $assignment->id,
+                'started_at' => $assignment->started_at->utc()->format('Y-m-d\TH:i:s\Z'),
+            ]);
+        });
+    }
+
+    /**
      * Why a Technician cannot yet be recommended or assigned for this Complaint, or null when one can;
      * shared with the requests' early check.
      */

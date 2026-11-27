@@ -11,8 +11,8 @@ use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
 /**
- * A comment on a Complaint. The reporter posts Public Comments; a Manager posts Public or
- * Internal ones. A Complaint the poster cannot see is not found; one they may only follow is forbidden.
+ * A comment on a Complaint. The reporter posts Public Comments; a Manager and the assigned
+ * Technician post Public or Internal ones. A Complaint the poster cannot see is not found; one they may only follow is forbidden.
  */
 class StoreCommentRequest extends FormRequest
 {
@@ -25,7 +25,7 @@ class StoreCommentRequest extends FormRequest
     public function authorize(): bool
     {
         $complaint = $this->complaint();
-        if (! $complaint->isReportedBy($this->user()) && ! $this->fromManager()) {
+        if (! $complaint->isReportedBy($this->user()) && ! $this->fromManagerOrAssignee()) {
             return false;
         }
         if ($complaint->status === ComplaintStatus::Closed) {
@@ -39,18 +39,19 @@ class StoreCommentRequest extends FormRequest
     {
         return [
             'body' => ['required', 'string', 'between:1,2000'],
-            'visibility' => ['sometimes', Rule::enum(CommentVisibility::class), ...($this->fromManager() ? [] : [Rule::in([CommentVisibility::Public->value])])],
+            'visibility' => ['sometimes', Rule::enum(CommentVisibility::class), ...($this->fromManagerOrAssignee() ? [] : [Rule::in([CommentVisibility::Public->value])])],
         ];
     }
 
-    private function fromManager(): bool
+    /** A Manager, or the Technician holding the latest Assignment (so a Closed Complaint answers 409, not 403). */
+    private function fromManagerOrAssignee(): bool
     {
-        return $this->user()->hasRole(Role::Manager);
+        return $this->user()->hasRole(Role::Manager) || $this->complaint()->hasLatestAssignee($this->user());
     }
 
     public function messages(): array
     {
-        return ['visibility.in' => 'Only the management office can post Internal Comments.'];
+        return ['visibility.in' => 'Only the Manager or the assigned Technician can post Internal Comments.'];
     }
 
     /** The Complaint being commented on, or 404 when the poster cannot see it. */

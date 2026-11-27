@@ -12,6 +12,7 @@ use App\Http\Controllers\Api\CategoryController;
 use App\Http\Controllers\Api\ComplaintCommentController;
 use App\Http\Controllers\Api\ComplaintController;
 use App\Http\Controllers\Api\ComplaintFollowController;
+use App\Http\Controllers\Api\ComplaintWorkflowController;
 use App\Http\Controllers\Api\EvidenceController;
 use App\Http\Controllers\Api\LocationTreeController;
 use App\Http\Controllers\Api\MeController;
@@ -49,6 +50,11 @@ Route::middleware(['auth:sanctum', 'active'])->group(function () {
         ->post('/complaints/{complaint}/comments', [ComplaintCommentController::class, 'store'])->whereNumber('complaint');
     Route::middleware('role:resident,manager')
         ->get('/locations/{location}/open-complaints', OpenComplaintsController::class)->whereNumber('location');
+
+    Route::middleware('role:manager')->group(function () {
+        Route::post('/complaints/{complaint}/review', [ComplaintWorkflowController::class, 'review'])->whereNumber('complaint');
+        Route::patch('/complaints/{complaint}/classification', [ComplaintWorkflowController::class, 'classify'])->whereNumber('complaint');
+    });
 
     Route::middleware('role:technician')->get('/technician/profile', [TechnicianController::class, 'mine']);
     Route::middleware('role:manager,technician,administrator')

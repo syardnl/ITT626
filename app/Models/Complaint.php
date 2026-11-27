@@ -23,6 +23,9 @@ class Complaint extends Model
         'priority_score', 'priority_breakdown', 'priority_rule_version', 'initial_priority', 'priority', 'status',
     ];
 
+    /** As the column default, so a just-created Complaint answers with its version too. */
+    protected $attributes = ['version' => 1];
+
     protected function casts(): array
     {
         return [
@@ -37,6 +40,7 @@ class Complaint extends Model
             'reviewed_at' => 'datetime',
             'resolved_at' => 'datetime',
             'closed_at' => 'datetime',
+            'version' => 'integer',
         ];
     }
 
@@ -58,6 +62,16 @@ class Complaint extends Model
     public function statusHistory(): HasMany
     {
         return $this->hasMany(StatusChange::class)->orderBy('created_at')->orderBy('id');
+    }
+
+    public function repairCycles(): HasMany
+    {
+        return $this->hasMany(RepairCycle::class)->orderBy('number');
+    }
+
+    public function classificationChanges(): HasMany
+    {
+        return $this->hasMany(ClassificationChange::class)->orderBy('created_at')->orderBy('id');
     }
 
     public function comments(): HasMany

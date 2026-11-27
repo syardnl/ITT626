@@ -311,7 +311,20 @@ export interface CommentTimelineEntry {
     at: string;
 }
 
-export type TimelineEntry = StatusTimelineEntry | CommentTimelineEntry;
+/** A Manager confirming or changing the Category and Priority; shown to the office only. */
+export interface ClassificationTimelineEntry {
+    type: 'classification';
+    id: number;
+    from_category: { id: number; name: string } | null;
+    to_category: { id: number; name: string };
+    from_priority: Priority;
+    to_priority: Priority;
+    reason: string | null;
+    actor: { id: number; name: string };
+    at: string;
+}
+
+export type TimelineEntry = StatusTimelineEntry | ClassificationTimelineEntry | CommentTimelineEntry;
 
 /** A report photo, served by GET /attachments/{id} to the reporter, Managers and Administrators. */
 export interface EvidencePhoto {
@@ -339,9 +352,17 @@ export interface ComplaintDetail extends Complaint {
     priority_breakdown: Record<'urgency' | 'safety_risk' | 'affected_units' | 'location_importance' | 'essential_service', number>;
     priority_rule_version: number;
     initial_priority: Priority;
+    /** When a Manager pressed Begin review; null while Reported. */
+    reviewed_at: string | null;
+    /** Sent back with workflow actions, so a change made meanwhile by someone else is refused with 409. */
+    version: number;
+    /** The office also sees the Category's default priority. */
+    category: { id: number; name: string; default_priority?: Priority } | null;
     evidence: EvidencePhoto[];
     /** Status changes and the comments this viewer may read, oldest first. */
     timeline: TimelineEntry[];
+    /** Office only. Cycle 1 starts at submission; each Resident Return starts another. */
+    repair_cycles?: { number: number; started_at: string }[];
     /** Present for the office (Manager, Administrator) only. */
     reporter?: { id: number; name: string; email: string; unit: { id: number; code: string } | null };
 }

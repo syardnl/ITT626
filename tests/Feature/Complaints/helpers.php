@@ -88,3 +88,9 @@ function openComplaintsAt(int $locationId)
 {
     return test()->getJson("/api/v1/locations/{$locationId}/open-complaints");
 }
+
+/** The version the signed-in account last loaded, as the SPA sends it back with a workflow action; 1 when it cannot open the Complaint. */
+function loadedVersion(int $complaintId): int
+{
+    return test()->getJson("/api/v1/complaints/{$complaintId}")->json('data.version') ?? 1;
+}

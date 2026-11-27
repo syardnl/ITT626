@@ -2,10 +2,11 @@
 
 namespace App\Http\Resources;
 
+use App\Models\ClassificationChange;
 use App\Models\Comment;
 use App\Models\StatusChange;
 
-/** One line of a Complaint's timeline: a status change or a comment, with when it happened in UTC. */
+/** One line of a Complaint's timeline: a status change, a classification or a comment, with when it happened in UTC. */
 final class TimelineEntry
 {
     public static function status(StatusChange $change): array
@@ -17,6 +18,24 @@ final class TimelineEntry
             'to_status' => $change->to_status->value,
             'reason' => $change->reason,
             'actor' => $change->actor ? ['id' => $change->actor->id, 'name' => $change->actor->name] : null,
+            'at' => $change->created_at->utc()->format('Y-m-d\TH:i:s\Z'),
+        ];
+    }
+
+    /** Office only: the reason may be a staff note. */
+    public static function classification(ClassificationChange $change): array
+    {
+        $category = fn ($category) => $category ? ['id' => $category->id, 'name' => $category->name] : null;
+
+        return [
+            'type' => 'classification',
+            'id' => $change->id,
+            'from_category' => $category($change->fromCategory),
+            'to_category' => $category($change->toCategory),
+            'from_priority' => $change->from_priority->value,
+            'to_priority' => $change->to_priority->value,
+            'reason' => $change->reason,
+            'actor' => ['id' => $change->actor->id, 'name' => $change->actor->name],
             'at' => $change->created_at->utc()->format('Y-m-d\TH:i:s\Z'),
         ];
     }

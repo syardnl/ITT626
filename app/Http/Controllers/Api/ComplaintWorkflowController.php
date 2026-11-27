@@ -11,9 +11,9 @@ use App\Http\Resources\ComplaintDetailResource;
 use App\Http\Resources\RecommendationEntry;
 use App\Models\Category;
 use App\Models\Complaint;
-use App\Services\Complaints\Candidate;
+use App\Services\Assignments\Candidate;
+use App\Services\Assignments\TechnicianRecommendations;
 use App\Services\Complaints\ComplaintWorkflow;
-use App\Services\Complaints\TechnicianRecommendations;
 use Illuminate\Http\JsonResponse;
 
 /** The workflow actions on a Complaint; each answers with the Complaint as the actor now sees it. Rules in ComplaintWorkflow. */
@@ -33,11 +33,8 @@ class ComplaintWorkflowController extends Controller
             $request->user(), $complaint, Category::findOrFail($request->validated('category_id')),
             $request->priority(), $request->reason(), $request->version(),
         );
-        $technician = $classified->currentAssignment?->technician;
 
-        return $this->detail($classified)->additional(['warnings' => $technician && ! $technician->hasSkillFor($classified->category)
-            ? ["{$technician->user->name} has no {$classified->category->name} Skill. Reassign the Complaint if they cannot do this work."]
-            : []]);
+        return $this->detail($classified)->additional(['warnings' => array_values(array_filter([$classified->skillMismatchWarning()]))]);
     }
 
     public function recommendations(RecommendTechniciansRequest $request, TechnicianRecommendations $recommendations): JsonResponse

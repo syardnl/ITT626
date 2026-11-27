@@ -3,7 +3,7 @@
 namespace App\Http\Resources;
 
 use App\Models\Category;
-use App\Services\Complaints\Candidate;
+use App\Services\Assignments\Candidate;
 
 /** One ranked Technician for a Complaint, with the reasons for the rank and the warnings to show before assigning. */
 final class RecommendationEntry
@@ -28,7 +28,7 @@ final class RecommendationEntry
             'at_capacity' => $candidate->isAtCapacity(),
             'same_block' => $candidate->sameBlock,
             'home_block' => ['id' => $block->id, 'code' => $block->code, 'name' => $block->name],
-            'current' => $candidate->current,
+            'current_assignee' => $candidate->currentAssignee,
             'reasons' => [
                 $candidate->isBusy() ? 'Busy' : 'Available',
                 $candidate->skillMatch ? "Has the {$category->name} Skill" : "No {$category->name} Skill",

@@ -44,13 +44,11 @@ final class TimelineEntry
     /** Office only. $previous is the Assignment this one replaced; its end reason is the reassignment's. */
     public static function assignment(Assignment $assignment, ?Assignment $previous): array
     {
-        $technician = fn (?Assignment $of) => $of ? ['id' => $of->technician->id, 'name' => $of->technician->user->name] : null;
-
         return [
             'type' => 'assignment',
             'id' => $assignment->id,
-            'technician' => $technician($assignment),
-            'previous_technician' => $technician($previous),
+            'technician' => $assignment->technicianRef(),
+            'previous_technician' => $previous?->technicianRef(),
             'reason' => $previous?->end_reason,
             'override_reason' => $assignment->override_reason,
             'actor' => ['id' => $assignment->assigner->id, 'name' => $assignment->assigner->name],

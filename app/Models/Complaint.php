@@ -87,6 +87,17 @@ class Complaint extends Model
         return $this->hasOne(Assignment::class)->whereNull('ended_at');
     }
 
+    /** A warning when the current assignee has no Skill for the Category (never a refusal: the Manager may reassign). */
+    public function skillMismatchWarning(): ?string
+    {
+        $technician = $this->currentAssignment?->technician;
+        if (! $technician || ! $this->category || $technician->hasSkillFor($this->category)) {
+            return null;
+        }
+
+        return "{$technician->user->name} has no {$this->category->name} Skill. Reassign the Complaint if they cannot do this work.";
+    }
+
     public function comments(): HasMany
     {
         return $this->hasMany(Comment::class)->orderBy('created_at')->orderBy('id');

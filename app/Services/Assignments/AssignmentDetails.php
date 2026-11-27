@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Services\Complaints;
+namespace App\Services\Assignments;
 
 /** What a Manager sends to assign or reassign a Complaint; ComplaintWorkflow::assign says which parts each case needs. */
 final readonly class AssignmentDetails

@@ -2,7 +2,7 @@
 
 namespace App\Http\Requests\Complaints;
 
-use App\Services\Complaints\AssignmentDetails;
+use App\Services\Assignments\AssignmentDetails;
 use Illuminate\Foundation\Http\FormRequest;
 
 /**

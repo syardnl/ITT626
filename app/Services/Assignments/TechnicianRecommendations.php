@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Services\Complaints;
+namespace App\Services\Assignments;
 
 use App\Models\Complaint;
 use App\Models\Technician;
@@ -24,7 +24,7 @@ class TechnicianRecommendations
                 activeTasks: $technician->active_tasks,
                 skillMatch: $technician->hasSkillFor($complaint->category),
                 sameBlock: $blockId !== null && $technician->home_block_id === $blockId,
-                current: $technician->id === $currentId,
+                currentAssignee: $technician->id === $currentId,
             ))
             ->all();
 
@@ -35,6 +35,6 @@ class TechnicianRecommendations
 
     private static function rankKey(Candidate $candidate): array
     {
-        return [$candidate->isBusy(), ! $candidate->skillMatch, $candidate->load(), ! $candidate->sameBlock, $candidate->technician->id];
+        return [$candidate->isBusy(), ! $candidate->skillMatch, $candidate->capacityRatio(), ! $candidate->sameBlock, $candidate->technician->id];
     }
 }

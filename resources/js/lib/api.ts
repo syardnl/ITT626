@@ -361,7 +361,7 @@ export interface TechnicianRecommendation {
     same_block: boolean;
     home_block: { id: number; code: string; name: string };
     /** Already assigned this Complaint. */
-    current: boolean;
+    current_assignee: boolean;
     reasons: string[];
     warnings: string[];
 }

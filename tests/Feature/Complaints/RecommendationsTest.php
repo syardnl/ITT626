@@ -55,7 +55,7 @@ it('gives each candidate the reasons for their rank', function () {
         'rank' => 1,
         'technician' => ['id' => $tariq['id'], 'name' => 'Tariq Technician', 'type' => 'in_house', 'company_name' => null],
         'availability' => 'available', 'skill_match' => true, 'active_tasks' => 1, 'max_tasks' => 3,
-        'at_capacity' => false, 'same_block' => true, 'current' => false,
+        'at_capacity' => false, 'same_block' => true, 'current_assignee' => false,
         'home_block' => ['id' => $block->id, 'code' => 'A', 'name' => 'A'],
         'reasons' => ['Available', 'Has the Lift Skill', '1 of 3 Active Tasks', 'Home Block A, same as the Complaint'],
         'warnings' => [],
@@ -91,10 +91,12 @@ it('leaves out Technicians On leave or with a deactivated account', function () 
 it('counts only Assigned, In Progress and Returned Complaints as Active Tasks', function () {
     ['complaint' => $complaint, 'block' => $block] = $setup = assignmentSetup();
     $tariq = technicianProfile('Tariq Technician', $block->id);
-    foreach (ComplaintStatus::cases() as $status) {
+    // Each starts Assigned; the later statuses have no endpoint yet.
+    $later = [ComplaintStatus::InProgress, ComplaintStatus::Returned, ComplaintStatus::PendingVerification, ComplaintStatus::Resolved, ComplaintStatus::Closed];
+    foreach ([null, ...$later] as $status) {
         $id = classifiedComplaint($setup);
         assign($id, ['technician_id' => $tariq['id']])->assertOk();
-        forceStatus($id, $status);
+        $status && forceStatus($id, $status);
     }
 
     expect(recommendationsFor($complaint)->json('data.0.active_tasks'))->toBe(3);
@@ -120,8 +122,8 @@ it('marks the current assignee', function () {
     assign($complaint, ['technician_id' => $tariq['id']])->assertOk();
 
     $current = collect(recommendationsFor($complaint)->json('data'))->keyBy('technician.name');
-    expect($current['Tariq Technician']['current'])->toBeTrue()
-        ->and($current['Una Other']['current'])->toBeFalse();
+    expect($current['Tariq Technician']['current_assignee'])->toBeTrue()
+        ->and($current['Una Other']['current_assignee'])->toBeFalse();
 });
 
 it('asks for a Category before recommending anyone', function () {

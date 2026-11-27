@@ -75,7 +75,7 @@ class ComplaintDetailResource extends ComplaintResource
 
         return $current ? [
             'id' => $current->id,
-            'technician' => ['id' => $current->technician->id, 'name' => $current->technician->user->name],
+            'technician' => $current->technicianRef(),
             'assigned_by' => ['id' => $current->assigner->id, 'name' => $current->assigner->name],
             'assigned_at' => $current->assigned_at->utc()->format('Y-m-d\TH:i:s\Z'),
             'override_reason' => $current->override_reason,

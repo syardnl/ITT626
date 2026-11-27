@@ -18,7 +18,7 @@ function reassignmentSetup(): array
 
 it('reassigns with a reason: the current Assignment ends and a new one starts', function (ComplaintStatus $from) {
     ['complaint' => $complaint, 'tariq' => $tariq, 'una' => $una, 'manager' => $manager] = reassignmentSetup();
-    forceStatus($complaint, $from);
+    $from === ComplaintStatus::Assigned || forceStatus($complaint, $from);
 
     assign($complaint, ['technician_id' => $una['id'], 'reason' => 'Tariq is off sick.'])->assertOk()
         ->assertJsonPath('data.status', 'assigned')

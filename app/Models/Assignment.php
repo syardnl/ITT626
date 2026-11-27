@@ -34,6 +34,12 @@ class Assignment extends Model
         return $this->belongsTo(User::class, 'assigned_by');
     }
 
+    /** The Technician as a timeline or detail page names them. */
+    public function technicianRef(): array
+    {
+        return ['id' => $this->technician->id, 'name' => $this->technician->user->name];
+    }
+
     /** Not yet ended by a reassignment or Closure. */
     public function scopeCurrent(Builder $query): void
     {

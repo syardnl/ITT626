@@ -10,6 +10,7 @@ use App\Models\Category;
 use App\Models\Complaint;
 use App\Models\Technician;
 use App\Models\User;
+use App\Services\Assignments\AssignmentDetails;
 use App\Services\Audit\AuditTrail;
 use Closure;
 use Illuminate\Support\Facades\DB;
@@ -71,12 +72,13 @@ class ComplaintWorkflow
             if ($complaint->category_id === null) {
                 throw new WorkflowConflict(self::assignmentRefusal($complaint));
             }
+            // Locked before any plain read: under REPEATABLE READ the first plain read fixes the snapshot,
+            // and concurrent Assignments to this Technician must queue here to see each other's.
+            $technician = Technician::query()->lockForUpdate()->findOrFail($details->technicianId);
             $current = $complaint->currentAssignment()->with('technician.user')->first();
             if ($current && $details->reason === null) {
                 throw ValidationException::withMessages(['reason' => 'Give a reason for reassigning this Complaint.']);
             }
-
-            $technician = Technician::query()->with('user')->lockForUpdate()->findOrFail($details->technicianId);
             $overrideReason = $this->checkTechnician($technician, $current?->technician_id, $details);
 
             $current?->forceFill(['ended_at' => now(), 'end_reason' => $details->reason])->save();
@@ -128,7 +130,8 @@ class ComplaintWorkflow
             throw ValidationException::withMessages(['technician_id' => $refusal]);
         }
 
-        $activeTasks = $technician->assignments()->activeTask()->count();
+        // A locking read sees the latest committed Assignments, not the transaction's snapshot.
+        $activeTasks = $technician->assignments()->activeTask()->sharedLock()->count();
         if (! $technician->isAtCapacity($activeTasks)) {
             return null;
         }

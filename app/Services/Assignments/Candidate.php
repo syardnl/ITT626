@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Services\Complaints;
+namespace App\Services\Assignments;
 
 use App\Enums\Availability;
 use App\Models\Technician;
@@ -13,7 +13,7 @@ final readonly class Candidate
         public int $activeTasks,
         public bool $skillMatch,
         public bool $sameBlock,
-        public bool $current,
+        public bool $currentAssignee,
     ) {}
 
     public function isBusy(): bool
@@ -27,7 +27,7 @@ final readonly class Candidate
     }
 
     /** Active Tasks to maximum tasks: lower ranks first. */
-    public function load(): float
+    public function capacityRatio(): float
     {
         return $this->activeTasks / $this->technician->max_tasks;
     }

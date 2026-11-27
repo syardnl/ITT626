@@ -94,8 +94,8 @@ function AssignDialog({ complaint, reassigning, onClose, onAssigned }: DialogPro
                 technician_id: technicianId,
                 note: note.trim() === '' ? null : note,
                 reason: reassigning ? reason : null,
-                override_capacity: chosen?.at_capacity ? override : false,
-                override_reason: chosen?.at_capacity && override ? overrideReason : null,
+                override_capacity: override,
+                override_reason: override ? overrideReason : null,
                 version: complaint.version,
             });
             onAssigned(response.data.data);
@@ -119,11 +119,11 @@ function AssignDialog({ complaint, reassigning, onClose, onAssigned }: DialogPro
                 {error && !showsInline && <Alert kind="error">{error.message}{error.status === 409 && ' Reload the page to see the latest.'}</Alert>}
                 {!candidates && !error && <p>Loading Technicians…</p>}
                 {candidates?.length === 0 && <p>No Technician can take new work: everyone is On leave or deactivated.</p>}
+                {fieldError('technician_id') && <p id="technician-error" className="text-sm text-red-700">{fieldError('technician_id')}</p>}
 
                 {candidates && candidates.length > 0 && (
                     <fieldset className="space-y-2" aria-describedby={fieldError('technician_id') ? 'technician-error' : undefined}>
                         <legend className="text-sm font-medium">Choose a Technician</legend>
-                        {fieldError('technician_id') && <p id="technician-error" className="text-sm text-red-700">{fieldError('technician_id')}</p>}
                         <ol className="space-y-2">
                             {candidates.map((candidate) => (
                                 <li key={candidate.technician.id}>
@@ -137,11 +137,12 @@ function AssignDialog({ complaint, reassigning, onClose, onAssigned }: DialogPro
                     </fieldset>
                 )}
 
-                {chosen?.at_capacity && (
+                {/* Also when the server found them at capacity after the list loaded. */}
+                {(chosen?.at_capacity || fieldError('override_capacity') || fieldError('override_reason')) && (
                     <div className="space-y-2 rounded-md border border-amber-300 bg-amber-50 p-3">
                         <label className="flex min-h-11 items-center gap-3">
                             <input type="checkbox" className="size-5" checked={override} onChange={(e) => setOverride(e.target.checked)} />
-                            Assign anyway, above {chosen.technician.name}’s maximum of {chosen.max_tasks} tasks
+                            Assign anyway, above {chosen?.technician.name ?? 'the Technician'}’s maximum tasks
                         </label>
                         {fieldError('override_capacity') && <p className="text-sm text-red-700">{fieldError('override_capacity')}</p>}
                         {override && (
@@ -184,14 +185,14 @@ function CandidateCard({ candidate, checked, onChoose }: { candidate: Technician
     return (
         <label
             htmlFor={id}
-            className={`flex gap-3 rounded-md border p-3 ${checked ? 'border-blue-600 ring-2 ring-blue-600' : 'border-slate-200'} ${candidate.current ? 'opacity-70' : 'cursor-pointer'}`}
+            className={`flex gap-3 rounded-md border p-3 ${checked ? 'border-blue-600 ring-2 ring-blue-600' : 'border-slate-200'} ${candidate.current_assignee ? 'opacity-70' : 'cursor-pointer'}`}
         >
-            <input id={id} type="radio" name="technician" className="mt-1 size-5 shrink-0" checked={checked} onChange={onChoose} disabled={candidate.current} />
+            <input id={id} type="radio" name="technician" className="mt-1 size-5 shrink-0" checked={checked} onChange={onChoose} disabled={candidate.current_assignee} />
             <span className="block space-y-1">
                 <span className="block font-medium">
                     {candidate.rank}. {technician.name}
                     <span className="font-normal text-slate-600"> · {technicianTypeLabel[technician.type]}{technician.company_name && ` (${technician.company_name})`}</span>
-                    {candidate.current && <span className="ml-2 rounded bg-slate-200 px-2 py-0.5 text-xs font-medium">Currently assigned</span>}
+                    {candidate.current_assignee && <span className="ml-2 rounded bg-slate-200 px-2 py-0.5 text-xs font-medium">Currently assigned</span>}
                 </span>
                 <span className="block text-sm text-slate-700">{candidate.reasons.join(' · ')}</span>
                 {candidate.warnings.map((warning) => (

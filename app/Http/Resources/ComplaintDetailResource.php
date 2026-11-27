@@ -9,6 +9,8 @@ use App\Models\ClassificationChange;
 use App\Models\Comment;
 use App\Models\Complaint;
 use App\Models\Evidence;
+use App\Models\Expense;
+use App\Models\MaintenanceRecord;
 use App\Models\RepairCycle;
 use App\Models\StatusChange;
 use App\Models\User;
@@ -22,7 +24,8 @@ class ComplaintDetailResource extends ComplaintResource
 {
     public const RELATIONS = ['location', 'category', 'statusHistory.actor', 'reporter.unit', 'evidence.uploader', 'comments.author.roles', 'repairCycles',
         'classificationChanges.actor', 'classificationChanges.fromCategory', 'classificationChanges.toCategory',
-        'assignments.technician.user', 'assignments.assigner'];
+        'assignments.technician.user', 'assignments.assigner',
+        'maintenanceRecords.technician.user', 'maintenanceRecords.expenses', 'maintenanceRecords.photos', 'maintenanceRecords.repairCycle', 'evidence.maintenanceRecord.technician'];
 
     public function toArray(Request $request): array
     {
@@ -52,9 +55,10 @@ class ComplaintDetailResource extends ComplaintResource
             'reviewed_at' => $this->reviewed_at?->utc()->format('Y-m-d\TH:i:s\Z'),
             // Sent back with a workflow action, so a change made meanwhile by someone else is refused (409).
             'version' => $this->version,
-            'evidence' => $this->evidence->map(fn (Evidence $photo) => [
+            'evidence' => $this->evidence->filter(fn (Evidence $photo) => $photo->isShownTo($request->user()))->values()->map(fn (Evidence $photo) => [
                 'id' => $photo->id,
                 'type' => $photo->type->value,
+                'maintenance_record_id' => $photo->maintenance_record_id,
                 'mime' => $photo->mime,
                 'size_bytes' => $photo->size_bytes,
                 'width' => $photo->width,
@@ -72,10 +76,46 @@ class ComplaintDetailResource extends ComplaintResource
             'started_at' => $this->when($request->user()->isStaff(), fn () => $this->latestAssignment()?->started_at?->utc()->format('Y-m-d\TH:i:s\Z')),
             // A Technician's own Complaint: they may comment while it is theirs, and start work when ComplaintStatus::STARTABLE.
             'assigned_to_you' => $this->when($request->user()->hasRole(Role::Technician), fn () => $this->isAssignedTo($request->user())),
+            'maintenance_records' => $this->maintenanceRecordsFor($request->user()),
+            'can_complete_work' => $this->when($request->user()->hasRole(Role::Technician), fn () => $this->isAssignedTo($request->user())
+                && $this->status === ComplaintStatus::InProgress),
             'can_start_work' => $this->when($request->user()->hasRole(Role::Technician), fn () => $this->isAssignedTo($request->user())
                 && in_array($this->status, ComplaintStatus::STARTABLE, true)),
             'timeline' => $this->timelineFor($request->user()),
         ];
+    }
+
+    /**
+     * The office sees every Maintenance Record in full; a Technician their own, expenses included;
+     * the reporter only what was repaired and its photos (#29 visibility).
+     */
+    private function maintenanceRecordsFor(User $viewer): array
+    {
+        return $this->maintenanceRecords
+            ->filter(fn (MaintenanceRecord $record) => ! $viewer->hasRole(Role::Technician) || $record->technician->isProfileOf($viewer))
+            ->values()
+            ->map(fn (MaintenanceRecord $record) => $viewer->isStaff() ? [
+                'id' => $record->id,
+                'attempt' => $record->attempt,
+                'repair_cycle' => $record->repairCycle->number,
+                'technician' => ['id' => $record->technician->id, 'name' => $record->technician->user->name],
+                'repair_result' => $record->repair_result,
+                'parts_used' => $record->parts_used,
+                'notes' => $record->notes,
+                'expenses' => $record->expenses->map(fn (Expense $line) => [
+                    'description' => $line->description, 'quantity' => $line->quantity, 'amount' => $line->amount,
+                ])->all(),
+                'expense_total' => $record->expenseTotal(),
+                'photo_ids' => $record->photos->pluck('id')->all(),
+                'submitted_at' => $record->submitted_at->utc()->format('Y-m-d\TH:i:s\Z'),
+                'verification_outcome' => $record->verification_outcome,
+            ] : [
+                'id' => $record->id,
+                'attempt' => $record->attempt,
+                'repair_result' => $record->repair_result,
+                'photo_ids' => $record->photos->pluck('id')->all(),
+                'submitted_at' => $record->submitted_at->utc()->format('Y-m-d\TH:i:s\Z'),
+            ])->all();
     }
 
     private function currentAssignmentEntry(): ?array

@@ -5,6 +5,7 @@ namespace App\Services\Complaints;
 use App\Enums\EvidenceType;
 use App\Models\Complaint;
 use App\Models\Evidence;
+use App\Models\MaintenanceRecord;
 use App\Models\User;
 use ErrorException;
 use Illuminate\Http\UploadedFile;
@@ -18,7 +19,7 @@ use Intervention\Image\ImageManager;
 use Throwable;
 
 /**
- * Photos sent with a new Complaint: each file is decoded (so only real JPEG, PNG or WebP images get through),
+ * Photos sent with a new Complaint or with Complete work: each file is decoded (so only real JPEG, PNG or WebP images get through),
  * shrunk to at most 1600 px on the longest edge and re-encoded as JPEG, which drops EXIF and
  * GPS metadata. Stored under a random name on the private `evidence` disk.
  */
@@ -67,8 +68,9 @@ class EvidencePhotos
      *
      * @param  list<PreparedPhoto>  $photos
      * @param  list<string>  $written
+     * @param  ?MaintenanceRecord  $record  the Maintenance Record Before and After photos belong to
      */
-    public function store(Complaint $complaint, User $uploader, array $photos, array &$written): void
+    public function store(Complaint $complaint, User $uploader, array $photos, array &$written, EvidenceType $type = EvidenceType::ReportPhoto, ?MaintenanceRecord $record = null): void
     {
         foreach ($photos as $photo) {
             $path = Str::random(40).'.jpg';
@@ -77,7 +79,8 @@ class EvidencePhotos
 
             $complaint->evidence()->create([
                 'uploaded_by' => $uploader->id,
-                'type' => EvidenceType::ReportPhoto,
+                'maintenance_record_id' => $record?->id,
+                'type' => $type,
                 'path' => $path,
                 'mime' => 'image/jpeg',
                 'size_bytes' => strlen($photo->bytes),

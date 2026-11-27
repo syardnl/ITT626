@@ -9,6 +9,7 @@ use App\Models\Category;
 use App\Models\Complaint;
 use App\Models\Location;
 use App\Models\Property;
+use Illuminate\Http\UploadedFile;
 
 /** Adds one Location straight to the tree (setup only; Location editing is tested in tests/Feature/Locations). */
 function place(LocationType $type, ?Location $parent, string $code, LocationImportance $importance = LocationImportance::Normal, bool $active = true): Location
@@ -187,4 +188,30 @@ function technicianWorkSetup(): array
 function startWork(int $complaintId, ?int $version = null)
 {
     return test()->postJson("/api/v1/complaints/{$complaintId}/start-work", ['version' => $version ?? loadedVersion($complaintId)]);
+}
+
+/** technicianWorkSetup() with Tariq, still signed in, having started work: the Complaint is In Progress. */
+function inProgressSetup(): array
+{
+    $setup = technicianWorkSetup();
+    startWork($setup['complaint'])->assertOk();
+
+    return $setup;
+}
+
+/** A Complete work body: a repair result and one After photo unless $overrides say otherwise. */
+function completionBody(array $overrides = []): array
+{
+    return [
+        'repair_result' => 'Replaced the door sensor; the lift runs normally.',
+        'photos' => [UploadedFile::fake()->image('after.jpg', 800, 600)],
+        'photo_tags' => ['after'],
+        ...$overrides,
+    ];
+}
+
+/** Sends the version the signed-in account loaded unless $body names one. */
+function completeWork(int $complaintId, array $body, array $headers = [])
+{
+    return test()->withHeaders($headers)->postJson("/api/v1/complaints/{$complaintId}/complete-work", ['version' => loadedVersion($complaintId), ...$body]);
 }

@@ -1,13 +1,14 @@
 import { useState } from 'react';
 import { Alert } from '../../components/Alert';
 import { api, ensureCsrfCookie, formatDateTime, toApiError, type ApiError, type ComplaintDetail } from '../../lib/api';
+import { CompleteWorkForm } from './CompleteWorkForm';
 
 interface Props {
     complaint: ComplaintDetail;
     onChanged: (complaint: ComplaintDetail) => void;
 }
 
-/** The assigned Technician's Start work button: Assigned or Returned → In Progress. */
+/** The assigned Technician's work: Start work (Assigned or Returned → In Progress), then the Complete work form. */
 export function StartWorkPanel({ complaint, onChanged }: Props) {
     const [busy, setBusy] = useState(false);
     const [error, setError] = useState<ApiError | null>(null);
@@ -46,6 +47,8 @@ export function StartWorkPanel({ complaint, onChanged }: Props) {
                     {busy ? 'Starting…' : 'Start work'}
                 </button>
             )}
+            {complaint.can_complete_work && <CompleteWorkForm complaint={complaint} onCompleted={onChanged} />}
+            {complaint.status === 'pending_verification' && <p className="text-sm">Sent to the management office for verification.</p>}
         </section>
     );
 }

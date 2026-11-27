@@ -8,13 +8,16 @@ use App\Enums\ComplaintStatus;
 use App\Enums\Priority;
 use App\Models\Category;
 use App\Models\Complaint;
+use App\Models\MaintenanceRecord;
 use App\Models\Technician;
 use App\Models\User;
 use App\Services\Assignments\AssignmentDetails;
 use App\Services\Audit\AuditTrail;
 use Closure;
+use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
+use Throwable;
 
 /**
  * The explicit actions that move a Complaint through the workflow (design §5). Each one locks
@@ -23,7 +26,7 @@ use Illuminate\Validation\ValidationException;
  */
 class ComplaintWorkflow
 {
-    public function __construct(private readonly AuditTrail $audit) {}
+    public function __construct(private readonly AuditTrail $audit, private readonly EvidencePhotos $photos) {}
 
     /** Reported → Under Review; the review time is the Response (design §5). */
     public function beginReview(User $manager, int $complaintId, ?int $version): Complaint
@@ -124,6 +127,81 @@ class ComplaintWorkflow
                 'started_at' => $assignment->started_at->utc()->format('Y-m-d\TH:i:s\Z'),
             ]);
         });
+    }
+
+    /**
+     * In Progress → Pending Verification, by the assigned Technician: one new Maintenance Record
+     * (the next attempt, in the current Repair Cycle) with its expense lines and tagged photos.
+     * Photos are re-encoded before the transaction; a retry with the same key returns the Complaint
+     * as the first attempt left it.
+     *
+     * @throws ValidationException when a photo cannot be used; nothing is saved
+     */
+    public function completeWork(User $technician, int $complaintId, CompletionDetails $details, ?int $version): Complaint
+    {
+        if ($done = $this->completedWith($technician, $complaintId, $details->key)) {
+            return $done;
+        }
+
+        $prepared = $this->photos->prepare(array_column($details->photos, 'file'));
+        $written = [];
+
+        try {
+            return $this->act($technician, $complaintId, $version, [ComplaintStatus::InProgress], function (Complaint $complaint) use ($technician, $details, $prepared, &$written) {
+                $this->photos->discard($written);   // a retried attempt starts clean
+                $written = [];
+
+                $assignment = $complaint->currentAssignment;   // theirs: see startWork
+                $record = $complaint->maintenanceRecords()->create([
+                    'assignment_id' => $assignment->id,
+                    'technician_id' => $assignment->technician_id,
+                    'repair_cycle_id' => $complaint->repairCycles()->reorder('number', 'desc')->value('id'),
+                    'attempt' => ($complaint->maintenanceRecords()->max('attempt') ?? 0) + 1,
+                    'repair_result' => $details->repairResult,
+                    'parts_used' => $details->partsUsed,
+                    'notes' => $details->notes,
+                    'submitted_at' => now(),
+                    'submission_key' => $details->key,
+                ]);
+                $record->expenses()->createMany($details->expenses);
+                foreach ($prepared as $index => $photo) {
+                    $this->photos->store($complaint, $technician, [$photo], $written, $details->photos[$index]['type'], $record);
+                }
+
+                $this->moveTo($complaint, ComplaintStatus::PendingVerification, $technician);
+                $this->audit->recordChange(AuditAction::WorkCompleted, $complaint, metadata: [
+                    'maintenance_record_id' => $record->id, 'attempt' => $record->attempt,
+                ]);
+            }, fn (Complaint $complaint) => self::completionRefusal($complaint->status));
+        } catch (Throwable $failure) {
+            $this->photos->discard($written);   // the rows rolled back; the files must go too
+
+            // The same key arrived twice at once and the other request committed first.
+            if ($failure instanceof UniqueConstraintViolationException && $done = $this->completedWith($technician, $complaintId, $details->key)) {
+                return $done;
+            }
+            throw $failure;
+        }
+    }
+
+    /** Why work in this status cannot be completed; shared with CompleteWorkRequest's early check. */
+    public static function completionRefusal(ComplaintStatus $status): string
+    {
+        return in_array($status, ComplaintStatus::STARTABLE, true)
+            ? 'Start work before completing it.'
+            : "This Complaint is already {$status->label()}.";
+    }
+
+    /** The Complaint a completion with this key already moved on, as the Technician may still see it. */
+    public function completedWith(User $technician, int $complaintId, ?string $key): ?Complaint
+    {
+        if ($key === null || ! $technician->technician) {
+            return null;
+        }
+        $done = MaintenanceRecord::query()->where('technician_id', $technician->technician->id)
+            ->where('submission_key', $key)->where('complaint_id', $complaintId)->exists();
+
+        return $done ? Complaint::query()->visibleTo($technician)->find($complaintId) : null;
     }
 
     /**

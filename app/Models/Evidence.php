@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Enums\EvidenceType;
+use App\Enums\Role;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
@@ -15,11 +16,26 @@ class Evidence extends Model
 
     protected $table = 'evidence';
 
-    protected $fillable = ['complaint_id', 'uploaded_by', 'type', 'path', 'mime', 'size_bytes', 'width', 'height'];
+    protected $fillable = ['complaint_id', 'maintenance_record_id', 'uploaded_by', 'type', 'path', 'mime', 'size_bytes', 'width', 'height'];
 
     protected function casts(): array
     {
         return ['type' => EvidenceType::class];
+    }
+
+    public function maintenanceRecord(): BelongsTo
+    {
+        return $this->belongsTo(MaintenanceRecord::class);
+    }
+
+    /**
+     * Among those who see the Complaint in full: report photos go to all of them; a Technician sees
+     * Before and After photos only from their own Maintenance Records.
+     */
+    public function isShownTo(User $viewer): bool
+    {
+        return $this->maintenance_record_id === null || ! $viewer->hasRole(Role::Technician)
+            || $this->maintenanceRecord->technician->isProfileOf($viewer);
     }
 
     public function complaint(): BelongsTo

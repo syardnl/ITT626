@@ -369,7 +369,9 @@ export interface TechnicianRecommendation {
 /** A report photo, served by GET /attachments/{id} to the reporter, Managers and Administrators. */
 export interface EvidencePhoto {
     id: number;
-    type: 'report_photo';
+    type: 'report_photo' | 'before_photo' | 'after_photo';
+    /** Set on Before and After photos: the Maintenance Record they belong to. */
+    maintenance_record_id: number | null;
     mime: string;
     size_bytes: number;
     width: number;
@@ -411,6 +413,10 @@ export interface ComplaintDetail extends Complaint {
     assigned_to_you?: boolean;
     /** Technicians only: theirs, and Assigned or Returned. */
     can_start_work?: boolean;
+    /** Technicians only: theirs, and In Progress. */
+    can_complete_work?: boolean;
+    /** Every attempt the viewer may see, oldest first: staff get the full record, the reporter what was repaired. */
+    maintenance_records: (MaintenanceRecord | ReportedRepair)[];
     /** The office and the assigned Technician; only the office gets the email. */
     reporter?: { id: number; name: string; email?: string; unit: { id: number; code: string } | null };
 }
@@ -447,3 +453,28 @@ export interface TechnicianTask extends Complaint {
 
 /** GET /technician/tasks: New (Assigned), In progress, Returned and Completed. */
 export type TechnicianTaskGroups = Record<'new' | 'in_progress' | 'returned' | 'completed', TechnicianTask[]>;
+
+/** A Maintenance Record as the reporter sees it: what was repaired, and its photos. */
+export interface ReportedRepair {
+    id: number;
+    attempt: number;
+    repair_result: string;
+    photo_ids: number[];
+    submitted_at: string;
+}
+
+/** A Maintenance Record as staff see it: the office every one, a Technician their own. */
+export interface MaintenanceRecord extends ReportedRepair {
+    repair_cycle: number;
+    technician: { id: number; name: string };
+    parts_used: string | null;
+    notes: string | null;
+    /** amount is the line's total in MYR, as a decimal string. */
+    expenses: { description: string; quantity: string; amount: string }[];
+    expense_total: string;
+    verification_outcome: string | null;
+}
+
+export function isStaffRecord(record: MaintenanceRecord | ReportedRepair): record is MaintenanceRecord {
+    return 'technician' in record;
+}

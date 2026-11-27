@@ -12,8 +12,8 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
 class EvidenceController extends Controller
 {
     /**
-     * A photo, for those who see its Complaint in full: the reporter, Managers and Administrators.
-     * Anyone else, Followers included, gets 404 so photos never leak.
+     * A photo, for those who see its Complaint in full (the reporter, the office and the Technician;
+     * a Technician only their own Before and After photos). Anyone else, Followers included, gets 404.
      */
     public function show(Request $request, int $evidence): StreamedResponse
     {
@@ -22,7 +22,7 @@ class EvidenceController extends Controller
             ->whereHas('complaint', fn ($complaint) => $complaint->visibleTo($viewer))
             ->with('complaint')
             ->findOrFail($evidence);
-        abort_unless($photo->complaint->isSeenInFullBy($viewer), 404);
+        abort_unless($photo->complaint->isSeenInFullBy($viewer) && $photo->isShownTo($viewer), 404);
         abort_unless(Storage::disk(Evidence::DISK)->exists($photo->path), 404);
 
         return Storage::disk(Evidence::DISK)->response($photo->path, "evidence-{$photo->id}.jpg", [

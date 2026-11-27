@@ -63,6 +63,7 @@ Route::middleware(['auth:sanctum', 'active'])->group(function () {
         Route::get('/technician/profile', [TechnicianController::class, 'mine']);
         Route::get('/technician/tasks', TechnicianTaskController::class);
         Route::post('/complaints/{complaint}/start-work', [ComplaintWorkflowController::class, 'startWork'])->whereNumber('complaint');
+        Route::post('/complaints/{complaint}/complete-work', [ComplaintWorkflowController::class, 'completeWork'])->whereNumber('complaint');
     });
     Route::middleware('role:manager,technician,administrator')
         ->get('/technicians/{technician}', [TechnicianController::class, 'show'])->whereNumber('technician');

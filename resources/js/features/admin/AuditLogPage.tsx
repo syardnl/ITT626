@@ -30,6 +30,7 @@ const actions: Record<string, string> = {
     'complaint.assigned': 'Technician assigned',
     'complaint.reassigned': 'Reassigned',
     'complaint.work_started': 'Work started',
+    'complaint.work_completed': 'Work completed',
 };
 
 const filterNames = ['actor', 'action', 'target_type', 'from', 'to'] as const;

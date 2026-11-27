@@ -89,7 +89,9 @@ class ComplaintWorkflow
                 // Reassigning an Assigned Complaint changes whose work it is, not its status.
                 $complaint->forceFill(['version' => $complaint->version + 1])->save();
             } else {
-                $this->moveTo($complaint, ComplaintStatus::Assigned, $manager, reason: $details->reason);
+                // No reason on the status row: everyone who sees the timeline reads those, and a reassignment
+                // reason is staff only. It is kept on the ended Assignment and in the audit log.
+                $this->moveTo($complaint, ComplaintStatus::Assigned, $manager);
             }
             if ($details->note !== null) {
                 $complaint->comments()->create(['author_id' => $manager->id, 'visibility' => CommentVisibility::Internal, 'body' => $details->note]);
@@ -130,8 +132,12 @@ class ComplaintWorkflow
             throw ValidationException::withMessages(['technician_id' => $refusal]);
         }
 
-        // A locking read sees the latest committed Assignments, not the transaction's snapshot.
-        $activeTasks = $technician->assignments()->activeTask()->sharedLock()->count();
+        // A locking read over a join (not a subquery, whose rows a locking read neither locks nor reads
+        // fresh) sees the latest committed Assignments and Complaint statuses, not the transaction's snapshot.
+        $activeTasks = $technician->assignments()->current()
+            ->join('complaints', 'complaints.id', '=', 'complaint_assignments.complaint_id')
+            ->whereIn('complaints.status', ComplaintStatus::ACTIVE_TASK)
+            ->sharedLock()->count();
         if (! $technician->isAtCapacity($activeTasks)) {
             return null;
         }
@@ -169,7 +175,7 @@ class ComplaintWorkflow
             $change($complaint);
 
             return $complaint;
-        });
+        }, attempts: 3);   // two reassignments in opposite directions can deadlock; InnoDB rolls one back and it is retried
     }
 
     /** Saves the new status (and any timestamps), bumps the version and appends the history row. */

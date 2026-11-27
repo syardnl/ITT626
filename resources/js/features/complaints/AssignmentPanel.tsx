@@ -129,7 +129,7 @@ function AssignDialog({ complaint, reassigning, onClose, onAssigned }: DialogPro
                                 <li key={candidate.technician.id}>
                                     <CandidateCard
                                         candidate={candidate} checked={technicianId === candidate.technician.id}
-                                        onChoose={() => { setTechnicianId(candidate.technician.id); setOverride(false); }}
+                                        onChoose={() => { setTechnicianId(candidate.technician.id); setOverride(false); setError(null); }}
                                     />
                                 </li>
                             ))}

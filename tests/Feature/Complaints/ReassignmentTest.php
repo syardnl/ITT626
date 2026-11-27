@@ -34,15 +34,17 @@ it('reassigns with a reason: the current Assignment ends and a new one starts', 
         ]);
 })->with([ComplaintStatus::Assigned, ComplaintStatus::InProgress, ComplaintStatus::Returned]);
 
-it('returns an In Progress or Returned Complaint to Assigned, with the reason in its history', function (ComplaintStatus $from) {
-    ['complaint' => $complaint, 'una' => $una] = reassignmentSetup();
+it('returns an In Progress or Returned Complaint to Assigned, keeping the staff-only reason from the reporter', function (ComplaintStatus $from) {
+    ['complaint' => $complaint, 'una' => $una, 'rina' => $rina] = reassignmentSetup();
     forceStatus($complaint, $from);
 
     assign($complaint, ['technician_id' => $una['id'], 'reason' => 'Tariq is off sick.'])->assertOk();
 
-    expect(collect(timelineOf($complaint, 'status'))->last())->toMatchArray([
-        'from_status' => $from->value, 'to_status' => 'assigned', 'reason' => 'Tariq is off sick.',
-    ]);
+    $this->actingAs($rina);
+    $response = $this->getJson("/api/v1/complaints/{$complaint}")->assertOk();
+    expect(collect($response->json('data.timeline'))->where('type', 'status')->last())->toMatchArray([
+        'from_status' => $from->value, 'to_status' => 'assigned', 'reason' => null,
+    ])->and($response->getContent())->not->toContain('Tariq is off sick.');
 })->with([ComplaintStatus::InProgress, ComplaintStatus::Returned]);
 
 it('adds no status change when reassigning an Assigned Complaint', function () {

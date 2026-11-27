@@ -215,3 +215,23 @@ function completeWork(int $complaintId, array $body, array $headers = [])
 {
     return test()->withHeaders($headers)->postJson("/api/v1/complaints/{$complaintId}/complete-work", ['version' => loadedVersion($complaintId), ...$body]);
 }
+
+/** inProgressSetup() with the work completed (Pending Verification) and Maya, the Manager, signed in. */
+function pendingVerificationSetup(): array
+{
+    $setup = inProgressSetup();
+    $record = completeWork($setup['complaint'], completionBody([
+        'photos' => [UploadedFile::fake()->image('before.jpg'), UploadedFile::fake()->image('after.jpg')],
+        'photo_tags' => ['before', 'after'],
+        'expenses' => [['description' => 'Door sensor', 'quantity' => 1, 'amount' => '185.50']],
+    ]))->assertOk()->json('data.maintenance_records.0');
+    test()->actingAs($setup['manager']);
+
+    return [...$setup, 'record' => $record];
+}
+
+/** Sends the version the signed-in account loaded unless $body names one. */
+function verifyWork(int $complaintId, array $body)
+{
+    return test()->postJson("/api/v1/complaints/{$complaintId}/verify", ['version' => loadedVersion($complaintId), ...$body]);
+}

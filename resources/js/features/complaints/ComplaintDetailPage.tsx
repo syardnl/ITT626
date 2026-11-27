@@ -11,6 +11,7 @@ import { AssignmentPanel } from './AssignmentPanel';
 import { MaintenanceRecords } from './MaintenanceRecords';
 import { ReviewPanel } from './ReviewPanel';
 import { TechnicianWorkPanel } from './TechnicianWorkPanel';
+import { VerifyWorkPanel } from './VerifyWorkPanel';
 
 export function ComplaintDetailPage() {
     const { id } = useParams();
@@ -67,6 +68,7 @@ export function ComplaintDetailPage() {
             {account?.role === 'manager' && (
                 <>
                     <ReviewPanel complaint={complaint} onChanged={setComplaint} />
+                    <VerifyWorkPanel complaint={complaint} onChanged={setComplaint} />
                     <AssignmentPanel complaint={complaint} onChanged={setComplaint} />
                 </>
             )}

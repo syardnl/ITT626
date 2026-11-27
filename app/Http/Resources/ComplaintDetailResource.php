@@ -25,7 +25,7 @@ class ComplaintDetailResource extends ComplaintResource
     public const RELATIONS = ['location', 'category', 'statusHistory.actor', 'reporter.unit', 'evidence.uploader', 'comments.author.roles', 'repairCycles',
         'classificationChanges.actor', 'classificationChanges.fromCategory', 'classificationChanges.toCategory',
         'assignments.technician.user', 'assignments.assigner',
-        'maintenanceRecords.technician.user', 'maintenanceRecords.expenses', 'maintenanceRecords.photos', 'maintenanceRecords.repairCycle', 'evidence.maintenanceRecord.technician'];
+        'maintenanceRecords.technician.user', 'maintenanceRecords.verifier', 'maintenanceRecords.expenses', 'maintenanceRecords.photos', 'maintenanceRecords.repairCycle', 'evidence.maintenanceRecord.technician'];
 
     public function toArray(Request $request): array
     {
@@ -53,6 +53,7 @@ class ComplaintDetailResource extends ComplaintResource
             'priority_rule_version' => $this->priority_rule_version,
             'initial_priority' => $this->initial_priority->value,
             'reviewed_at' => $this->reviewed_at?->utc()->format('Y-m-d\TH:i:s\Z'),
+            'resolved_at' => $this->resolved_at?->utc()->format('Y-m-d\TH:i:s\Z'),
             // Sent back with a workflow action, so a change made meanwhile by someone else is refused (409).
             'version' => $this->version,
             'evidence' => $this->evidence->filter(fn (Evidence $photo) => $photo->isShownTo($request->user()))->values()->map(fn (Evidence $photo) => [
@@ -109,6 +110,9 @@ class ComplaintDetailResource extends ComplaintResource
                 'photo_ids' => $record->photos->pluck('id')->all(),
                 'submitted_at' => $record->submitted_at->utc()->format('Y-m-d\TH:i:s\Z'),
                 'verification_outcome' => $record->verification_outcome,
+                'verification_reason' => $record->verification_reason,
+                'verified_by' => $record->verifier ? ['id' => $record->verifier->id, 'name' => $record->verifier->name] : null,
+                'verified_at' => $record->verified_at?->utc()->format('Y-m-d\TH:i:s\Z'),
             ] : [
                 'id' => $record->id,
                 'attempt' => $record->attempt,

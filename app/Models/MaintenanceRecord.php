@@ -29,6 +29,11 @@ class MaintenanceRecord extends Model
         return $this->belongsTo(Technician::class);
     }
 
+    public function verifier(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'verified_by');
+    }
+
     public function repairCycle(): BelongsTo
     {
         return $this->belongsTo(RepairCycle::class);
@@ -52,8 +57,11 @@ class MaintenanceRecord extends Model
         return intdiv($sen, 100).'.'.str_pad((string) ($sen % 100), 2, '0', STR_PAD_LEFT);
     }
 
-    /** verification_outcome once a Manager approves the work (the verification ticket sets it). */
+    /** verification_outcome once a Manager approves the work. */
     public const APPROVED = 'approved';
+
+    /** verification_outcome after a Manager Rejection; verification_reason says why. */
+    public const RETURNED = 'returned';
 
     /**
      * Who may see this record, among those who see its Complaint in full: the office every one, a

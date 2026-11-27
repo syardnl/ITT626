@@ -6,6 +6,7 @@ use App\Enums\AuditAction;
 use App\Enums\CommentVisibility;
 use App\Enums\ComplaintStatus;
 use App\Enums\Priority;
+use App\Enums\VerificationDecision;
 use App\Models\Category;
 use App\Models\Complaint;
 use App\Models\MaintenanceRecord;
@@ -188,6 +189,40 @@ class ComplaintWorkflow
             }
             throw $failure;
         }
+    }
+
+    /**
+     * The Manager's verification of the latest Maintenance Record. Approve: Pending Verification →
+     * Resolved, recording the Resolution time. Return (a Manager Rejection, with a reason): →
+     * Returned, to the same Technician, in the same Repair Cycle (ADR 0005). The reason stays with
+     * the record and the audit log, for staff only.
+     */
+    public function verify(User $manager, int $complaintId, VerificationDecision $decision, ?string $reason, ?int $version): Complaint
+    {
+        return $this->act($manager, $complaintId, $version, [ComplaintStatus::PendingVerification], function (Complaint $complaint) use ($manager, $decision, $reason) {
+            $record = $complaint->maintenanceRecords()->reorder('attempt', 'desc')->firstOrFail();
+            $record->forceFill([
+                'verification_outcome' => $decision->outcome(),
+                'verification_reason' => $decision === VerificationDecision::Return ? $reason : null,
+                'verified_by' => $manager->id,
+                'verified_at' => now(),
+            ])->save();
+
+            $decision === VerificationDecision::Approve
+                ? $this->moveTo($complaint, ComplaintStatus::Resolved, $manager, ['resolved_at' => now()])
+                : $this->moveTo($complaint, ComplaintStatus::Returned, $manager);
+            $this->audit->recordChange(AuditAction::Verified, $complaint, metadata: array_filter([
+                'decision' => $decision->value,
+                'maintenance_record_id' => $record->id,
+                'reason' => $decision === VerificationDecision::Return ? $reason : null,
+            ], fn ($value) => $value !== null));
+        }, fn (Complaint $complaint) => self::verificationRefusal($complaint->status));
+    }
+
+    /** Why work in this status cannot be verified; shared with VerifyWorkRequest's early check. */
+    public static function verificationRefusal(ComplaintStatus $status): string
+    {
+        return "This Complaint is {$status->label()}, not Pending Verification.";
     }
 
     /** Why work in this status cannot be completed; shared with CompleteWorkRequest's early check. */

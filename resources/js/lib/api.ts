@@ -397,6 +397,8 @@ export interface ComplaintDetail extends Complaint {
     priority_breakdown: Record<'urgency' | 'safety_risk' | 'affected_units' | 'location_importance' | 'essential_service', number>;
     priority_rule_version: number;
     initial_priority: Priority;
+    /** When a Manager approved the work (the Resolution); null until then. */
+    resolved_at: string | null;
     /** When a Manager pressed Begin review; null while Reported. */
     reviewed_at: string | null;
     /** Sent back with workflow actions, so a change made meanwhile by someone else is refused with 409. */
@@ -475,7 +477,11 @@ export interface MaintenanceRecord extends MaintenanceRecordSummary {
     /** amount is the line's total in MYR, as a decimal string. */
     expenses: { description: string; quantity: string; amount: string }[];
     expense_total: string;
-    verification_outcome: string | null;
+    verification_outcome: 'approved' | 'returned' | null;
+    /** Why a Manager returned the work (a Manager Rejection). */
+    verification_reason: string | null;
+    verified_by: { id: number; name: string } | null;
+    verified_at: string | null;
 }
 
 export function isStaffRecord(record: MaintenanceRecord | MaintenanceRecordSummary): record is MaintenanceRecord {

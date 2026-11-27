@@ -129,6 +129,10 @@ The link between a Complaint and the one Technician currently responsible for it
 A Complaint assigned to a Technician that is Assigned, In Progress or Returned; counts against the Technician's maximum tasks.
 _Avoid_: Open job, workload item
 
+**Maintenance Record**:
+A Technician's record of one repair attempt, made when they complete the work: the repair result, at least one After photo, and optional Before photos, parts used, notes and expense lines in MYR. Each one is numbered (its attempt number, counted per Complaint), so earlier records stay after a Manager Rejection or Resident Return. Several Maintenance Records can fall in one Repair Cycle.
+_Avoid_: Job sheet, work order, report
+
 **Availability**:
 A Technician's current state for new work: Available, Busy (can be assigned, ranked lower, with a warning) or On leave (cannot be assigned).
 

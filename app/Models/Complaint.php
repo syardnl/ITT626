@@ -98,6 +98,11 @@ class Complaint extends Model
         return "{$technician->user->name} has no {$this->category->name} Skill. Reassign the Complaint if they cannot do this work.";
     }
 
+    public function maintenanceRecords(): HasMany
+    {
+        return $this->hasMany(MaintenanceRecord::class)->orderBy('attempt');
+    }
+
     public function comments(): HasMany
     {
         return $this->hasMany(Comment::class)->orderBy('created_at')->orderBy('id');

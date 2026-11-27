@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Complaints\AssignTechnicianRequest;
 use App\Http\Requests\Complaints\ClassifyComplaintRequest;
+use App\Http\Requests\Complaints\CompleteWorkRequest;
 use App\Http\Requests\Complaints\RecommendTechniciansRequest;
 use App\Http\Requests\Complaints\ReviewComplaintRequest;
 use App\Http\Requests\Complaints\StartWorkRequest;
@@ -57,6 +58,11 @@ class ComplaintWorkflowController extends Controller
     public function startWork(StartWorkRequest $request, int $complaint): ComplaintDetailResource
     {
         return $this->detail($this->workflow->startWork($request->user(), $complaint, $request->version()));
+    }
+
+    public function completeWork(CompleteWorkRequest $request, int $complaint): ComplaintDetailResource
+    {
+        return $this->detail($this->workflow->completeWork($request->user(), $complaint, $request->details(), $request->version()));
     }
 
     private function detail(Complaint $complaint): ComplaintDetailResource

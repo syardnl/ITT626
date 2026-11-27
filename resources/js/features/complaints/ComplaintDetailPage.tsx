@@ -8,8 +8,9 @@ import {
 import { useAuth } from '../../lib/auth';
 import { ComplaintTimeline } from './ComplaintTimeline';
 import { AssignmentPanel } from './AssignmentPanel';
+import { MaintenanceRecords } from './MaintenanceRecords';
 import { ReviewPanel } from './ReviewPanel';
-import { StartWorkPanel } from './StartWorkPanel';
+import { TechnicianWorkPanel } from './TechnicianWorkPanel';
 
 export function ComplaintDetailPage() {
     const { id } = useParams();
@@ -69,22 +70,22 @@ export function ComplaintDetailPage() {
                     <AssignmentPanel complaint={complaint} onChanged={setComplaint} />
                 </>
             )}
-            {account?.role === 'technician' && <StartWorkPanel complaint={complaint} onChanged={setComplaint} />}
+            {account?.role === 'technician' && <TechnicianWorkPanel complaint={complaint} onChanged={setComplaint} />}
 
             <section>
                 <h2 className="text-lg font-semibold">Description</h2>
                 <p className="mt-2 whitespace-pre-line">{complaint.description}</p>
             </section>
 
-            {complaint.evidence.length > 0 && (
+            {complaint.evidence.some((photo) => photo.type === 'report_photo') && (
                 <section>
                     <h2 className="text-lg font-semibold">Photos</h2>
                     <ul className="mt-2 grid grid-cols-2 gap-3 sm:grid-cols-3">
-                        {complaint.evidence.map((photo, index) => (
+                        {complaint.evidence.filter((photo) => photo.type === 'report_photo').map((photo, index, reportPhotos) => (
                             <li key={photo.id}>
                                 <a href={photo.url} target="_blank" rel="noreferrer" className="block focus:outline-2 focus:outline-offset-2 focus:outline-blue-600">
                                     <img
-                                        src={photo.url} alt={`Photo ${index + 1} of ${complaint.evidence.length}`} loading="lazy"
+                                        src={photo.url} alt={`Photo ${index + 1} of ${reportPhotos.length}`} loading="lazy"
                                         width={photo.width} height={photo.height} className="aspect-square w-full rounded-md object-cover"
                                     />
                                 </a>
@@ -93,6 +94,8 @@ export function ComplaintDetailPage() {
                     </ul>
                 </section>
             )}
+
+            <MaintenanceRecords complaint={complaint} />
 
             <ComplaintTimeline
                 complaintId={complaint.id}

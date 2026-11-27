@@ -1,10 +1,14 @@
-import { useEffect, useMemo } from 'react';
+import { useEffect, useMemo, type ReactNode } from 'react';
 import { photoLimits } from '../../lib/api';
 
 interface Props {
     photos: File[];
     onChange: (photos: File[]) => void;
     error?: string;
+    /** Defaults to "Photos (optional)". */
+    legend?: ReactNode;
+    /** Shown under each preview, e.g. a Before/After choice. */
+    controlsFor?: (photo: File, index: number) => ReactNode;
 }
 
 const buttonClass = 'inline-flex min-h-11 cursor-pointer items-center rounded-md border border-slate-300 bg-white px-4 font-medium hover:bg-slate-50 focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-blue-600';
@@ -13,7 +17,7 @@ const buttonClass = 'inline-flex min-h-11 cursor-pointer items-center rounded-md
  * Up to five photos from the camera or the gallery, with previews. The server re-checks
  * everything; the limits here only save a wasted upload on a slow phone connection.
  */
-export function PhotoPicker({ photos, onChange, error }: Props) {
+export function PhotoPicker({ photos, onChange, error, legend = 'Photos (optional)', controlsFor }: Props) {
     const previews = useMemo(() => photos.map((photo) => URL.createObjectURL(photo)), [photos]);
     useEffect(() => () => previews.forEach((url) => URL.revokeObjectURL(url)), [previews]);
 
@@ -30,7 +34,7 @@ export function PhotoPicker({ photos, onChange, error }: Props) {
 
     return (
         <fieldset className="space-y-3" aria-describedby="photos-hint">
-            <legend className="text-sm font-medium">Photos (optional)</legend>
+            <legend className="text-sm font-medium">{legend}</legend>
             <p id="photos-hint" className="text-sm text-slate-600">
                 Up to {photoLimits.count} photos, JPEG, PNG or WebP, {photoLimits.megabytes} MB each. Location data is removed before they are stored.
             </p>
@@ -59,6 +63,7 @@ export function PhotoPicker({ photos, onChange, error }: Props) {
                     {photos.map((photo, index) => (
                         <li key={previews[index]} className="space-y-1">
                             <img src={previews[index]} alt={`Photo ${index + 1}: ${photo.name}`} className="aspect-square w-full rounded-md object-cover" />
+                            {controlsFor?.(photo, index)}
                             <button
                                 type="button" onClick={() => onChange(photos.filter((_, other) => other !== index))}
                                 className="min-h-11 w-full rounded-md text-sm text-red-700 underline hover:bg-red-50"

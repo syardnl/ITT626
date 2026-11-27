@@ -91,4 +91,5 @@ it('admits each role to the Complaint endpoints it may call', function (string $
     'assign or reassign' => ['POST', '/api/v1/complaints/999999/assignments', [Role::Manager]],
     'technician tasks' => ['GET', '/api/v1/technician/tasks', [Role::Technician]],
     'start work' => ['POST', '/api/v1/complaints/999999/start-work', [Role::Technician]],
+    'complete work' => ['POST', '/api/v1/complaints/999999/complete-work', [Role::Technician]],
 ]);

@@ -8,6 +8,10 @@ use Database\Seeders\DatabaseSeeder;
 use Database\Seeders\DemoSeeder;
 use Database\Seeders\ReferenceSeeder;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
+
+// DemoSeeder stores sample photos; keep them out of the real evidence disk.
+beforeEach(fn () => Storage::fake('evidence'));
 
 it('seeds the single Property and the four roles, and no accounts', function () {
     $this->seed(DatabaseSeeder::class);
@@ -117,7 +121,7 @@ it('can be re-run without duplicating demo accounts or profiles', function () {
     $this->seed(DemoSeeder::class);
     $this->seed(DemoSeeder::class);
 
-    expect(User::count())->toBe(4)
+    expect(User::count())->toBe(5)
         ->and(Technician::count())->toBe(1);
 });
 

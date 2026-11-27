@@ -17,7 +17,8 @@ use RuntimeException;
 
 /**
  * Local demonstration data only: the sample Location tree, one active account
- * per role, all with the password "demo-password", and a Technician profile.
+ * per role plus a second Resident (resident2@demo.test), all with the password
+ * "demo-password", a Technician profile and three sample Complaints.
  * Run with `php artisan db:seed --class=DemoSeeder`.
  */
 class DemoSeeder extends Seeder
@@ -36,6 +37,10 @@ class DemoSeeder extends Seeder
         $unit = Location::where('code', 'A-01-01')->firstOrFail();
 
         $this->account(Role::Resident, 'Rina Resident', ['unit_id' => $unit->id, 'resident_type' => ResidentType::Tenant]);
+        // A neighbour in Block A, so Following has someone to show it.
+        $this->account(Role::Resident, 'Nadia Neighbour', [
+            'unit_id' => Location::where('code', 'A-02-03')->firstOrFail()->id, 'resident_type' => ResidentType::Owner,
+        ], email: 'resident2@demo.test');
         $this->account(Role::Manager, 'Mariam Manager');
         $technician = $this->account(Role::Technician, 'Tariq Technician');
         $this->account(Role::Administrator, 'Adam Administrator');
@@ -47,12 +52,14 @@ class DemoSeeder extends Seeder
             'home_block_id' => Location::where('code', 'A')->where('type', LocationType::Block)->firstOrFail()->id,
         ]);
         $profile->skills()->sync(Skill::whereHas('category', fn ($category) => $category->whereIn('key', ['plumbing', 'electrical']))->pluck('id'));
+
+        $this->call(DemoComplaintSeeder::class);
     }
 
-    private function account(Role $role, string $name, array $attributes = []): User
+    private function account(Role $role, string $name, array $attributes = [], ?string $email = null): User
     {
         $user = User::updateOrCreate(
-            ['email' => "{$role->value}@demo.test"],
+            ['email' => $email ?? "{$role->value}@demo.test"],
             ['property_id' => Property::current()->id, 'name' => $name, 'password' => self::PASSWORD, 'active' => true, ...$attributes],
         );
 

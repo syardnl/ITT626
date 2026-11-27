@@ -27,7 +27,7 @@ composer dev     # server, queue worker, logs and Vite
 
 Run `mailpit` in another terminal to catch outgoing email; its inbox is at <http://127.0.0.1:8025>. Password links are sent through the queue, so `composer dev` (which runs the queue worker) must be running too. Don't switch `MAIL_MAILER` to `log`: it would write password links into `storage/logs` in plain text.
 
-Open <http://127.0.0.1:8000>. Demo accounts (password `demo-password`): `resident@demo.test`, `manager@demo.test`, `technician@demo.test`, `administrator@demo.test`.
+Open <http://127.0.0.1:8000>. Demo accounts (password `demo-password`): `resident@demo.test`, `manager@demo.test`, `technician@demo.test`, `administrator@demo.test`, and a second Resident in Block A, `resident2@demo.test`. The demo seed also adds three sample Complaints with photos (on a Unit, on Block A lift 1 followed by the second Resident, and at the swimming pool); re-running it adds nothing new.
 
 `php artisan migrate:fresh --seed` rebuilds the database with reference data only (the Property and the four roles). It creates no accounts and no passwords.
 

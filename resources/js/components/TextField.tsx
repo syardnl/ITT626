@@ -1,4 +1,4 @@
-import type { InputHTMLAttributes } from 'react';
+import type { InputHTMLAttributes, ReactNode } from 'react';
 
 /** Shared look of text inputs and selects; 44px tall with a visible focus ring. */
 export const inputClassName =
@@ -6,7 +6,7 @@ export const inputClassName =
 
 interface TextFieldProps extends InputHTMLAttributes<HTMLInputElement> {
     id: string;
-    label: string;
+    label: ReactNode;
     /** Guidance shown under the field and announced with it. */
     hint?: string;
     /** Field-level error from the API envelope; announced and linked to the input. */

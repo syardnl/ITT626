@@ -20,6 +20,15 @@ enum ComplaintStatus: string
     /** Where a Manager may confirm or change the Category and Priority: open, once review has begun. */
     public const array CLASSIFIABLE = [self::UnderReview, self::Assigned, self::InProgress, self::PendingVerification, self::Returned];
 
+    /** A Technician's Active Tasks are their current Assignments in these statuses; Pending Verification does not count (design §6.2). */
+    public const array ACTIVE_TASK = [self::Assigned, self::InProgress, self::Returned];
+
+    /** Where a Manager may reassign: the Technician's work is not with the office for verification. */
+    public const array REASSIGNABLE = [self::Assigned, self::InProgress, self::Returned];
+
+    /** Where a Manager may assign: Under Review for the first Assignment, or reassign. */
+    public const array ASSIGNABLE = [self::UnderReview, ...self::REASSIGNABLE];
+
     /** Open means anything not Resolved or Closed. */
     public function isOpen(): bool
     {

@@ -52,6 +52,18 @@ class Location extends Model
         return $this->type === LocationType::CommonArea && $this->parent_id === null;
     }
 
+    /** The Block this Location is or sits in; null for a Shared Area. */
+    public function blockId(): ?int
+    {
+        for ($node = $this; $node; $node = $node->parent) {
+            if ($node->type === LocationType::Block) {
+                return $node->id;
+            }
+        }
+
+        return null;
+    }
+
     /** True when $candidate is this Location or sits anywhere beneath it. */
     public function isSelfOrAncestorOf(Location $candidate): bool
     {

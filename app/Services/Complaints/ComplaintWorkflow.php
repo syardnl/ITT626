@@ -3,14 +3,18 @@
 namespace App\Services\Complaints;
 
 use App\Enums\AuditAction;
+use App\Enums\CommentVisibility;
 use App\Enums\ComplaintStatus;
 use App\Enums\Priority;
 use App\Models\Category;
 use App\Models\Complaint;
+use App\Models\Technician;
 use App\Models\User;
+use App\Services\Assignments\AssignmentDetails;
 use App\Services\Audit\AuditTrail;
 use Closure;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 
 /**
  * The explicit actions that move a Complaint through the workflow (design §5). Each one locks
@@ -46,7 +50,7 @@ class ComplaintWorkflow
             $complaint->forceFill(['category_id' => $category->id, 'priority' => $priority, 'version' => $complaint->version + 1])->save();
             $complaint->classificationChanges()->create($change);
             $this->audit->recordChange(AuditAction::Classified, $complaint, metadata: $reason === null ? [] : ['reason' => $reason]);
-        }, self::classificationRefusal(...));
+        }, fn (Complaint $complaint) => self::classificationRefusal($complaint->status));
     }
 
     /** Why a Complaint in this status cannot be classified; shared with ClassifyComplaintRequest's early check. */
@@ -58,13 +62,103 @@ class ComplaintWorkflow
     }
 
     /**
+     * Assigns a Technician (Under Review → Assigned) or reassigns (Assigned, In Progress or Returned
+     * → Assigned), ending the current Assignment with the reason. The Technician is locked and their
+     * Active Tasks counted in this transaction, so capacity cannot be exceeded without an override.
+     */
+    public function assign(User $manager, int $complaintId, AssignmentDetails $details, ?int $version): Complaint
+    {
+        return $this->act($manager, $complaintId, $version, ComplaintStatus::ASSIGNABLE, function (Complaint $complaint) use ($manager, $details) {
+            if ($complaint->category_id === null) {
+                throw new WorkflowConflict(self::assignmentRefusal($complaint));
+            }
+            // Locked before any plain read: under REPEATABLE READ the first plain read fixes the snapshot,
+            // and concurrent Assignments to this Technician must queue here to see each other's.
+            $technician = Technician::query()->lockForUpdate()->findOrFail($details->technicianId);
+            $current = $complaint->currentAssignment()->with('technician.user')->first();
+            if ($current && $details->reason === null) {
+                throw ValidationException::withMessages(['reason' => 'Give a reason for reassigning this Complaint.']);
+            }
+            $overrideReason = $this->checkTechnician($technician, $current?->technician_id, $details);
+
+            $current?->forceFill(['ended_at' => now(), 'end_reason' => $details->reason])->save();
+            $complaint->assignments()->create([
+                'technician_id' => $technician->id, 'assigned_by' => $manager->id, 'assigned_at' => now(), 'override_reason' => $overrideReason,
+            ]);
+            if ($complaint->status === ComplaintStatus::Assigned) {
+                // Reassigning an Assigned Complaint changes whose work it is, not its status.
+                $complaint->forceFill(['version' => $complaint->version + 1])->save();
+            } else {
+                // No reason on the status row: everyone who sees the timeline reads those, and a reassignment
+                // reason is staff only. It is kept on the ended Assignment and in the audit log.
+                $this->moveTo($complaint, ComplaintStatus::Assigned, $manager);
+            }
+            if ($details->note !== null) {
+                $complaint->comments()->create(['author_id' => $manager->id, 'visibility' => CommentVisibility::Internal, 'body' => $details->note]);
+            }
+
+            $this->audit->recordChange($current ? AuditAction::Reassigned : AuditAction::Assigned, $complaint, metadata: array_filter([
+                'technician_id' => $technician->id,
+                'previous_technician_id' => $current?->technician_id,
+                'reason' => $details->reason,
+                'override_reason' => $overrideReason,
+            ], fn ($value) => $value !== null));
+        }, self::assignmentRefusal(...));
+    }
+
+    /**
+     * Why a Technician cannot yet be recommended or assigned for this Complaint, or null when one can;
+     * shared with the requests' early check.
+     */
+    public static function assignmentRefusal(Complaint $complaint): ?string
+    {
+        return match (true) {
+            $complaint->status === ComplaintStatus::Reported => 'Begin review before assigning a Technician.',
+            ! in_array($complaint->status, ComplaintStatus::ASSIGNABLE, true) => "This Complaint is already {$complaint->status->label()}.",
+            $complaint->category_id === null => 'Classify this Complaint before assigning a Technician.',
+            default => null,
+        };
+    }
+
+    /**
+     * Refuses (422) a Technician who cannot take new work, already has the Complaint, or is at
+     * maximum tasks without an explained override. Returns the override reason when one was needed.
+     */
+    private function checkTechnician(Technician $technician, ?int $currentTechnicianId, AssignmentDetails $details): ?string
+    {
+        $refusal = $technician->newWorkRefusal()
+            ?? ($technician->id === $currentTechnicianId ? "This Complaint is already assigned to {$technician->user->name}." : null);
+        if ($refusal !== null) {
+            throw ValidationException::withMessages(['technician_id' => $refusal]);
+        }
+
+        // A locking read over a join (not a subquery, whose rows a locking read neither locks nor reads
+        // fresh) sees the latest committed Assignments and Complaint statuses, not the transaction's snapshot.
+        $activeTasks = $technician->assignments()->current()
+            ->join('complaints', 'complaints.id', '=', 'complaint_assignments.complaint_id')
+            ->whereIn('complaints.status', ComplaintStatus::ACTIVE_TASK)
+            ->sharedLock()->count();
+        if (! $technician->isAtCapacity($activeTasks)) {
+            return null;
+        }
+        if (! $details->overrideCapacity) {
+            throw ValidationException::withMessages(['override_capacity' => "{$technician->user->name} is at maximum tasks ({$activeTasks} of {$technician->max_tasks}). Confirm the override to assign anyway."]);
+        }
+        if ($details->overrideReason === null) {
+            throw ValidationException::withMessages(['override_reason' => 'Give a reason for assigning above maximum tasks.']);
+        }
+
+        return $details->overrideReason;
+    }
+
+    /**
      * Locks the Complaint the actor can see (404 otherwise), refuses with 409 when its status is not
      * one of $allowed or its version is not the one the actor loaded, then runs $change. A null
      * $version skips that check: only for the system acting on its own (Automatic Closure, seeding);
      * every HTTP request must send one.
      *
      * @param  list<ComplaintStatus>  $allowed
-     * @param  ?Closure(ComplaintStatus): string  $refusal  the 409 message for a status not allowed
+     * @param  ?Closure(Complaint): ?string  $refusal  the 409 message for a status not allowed
      */
     private function act(User $actor, int $complaintId, ?int $version, array $allowed, Closure $change, ?Closure $refusal = null): Complaint
     {
@@ -72,7 +166,7 @@ class ComplaintWorkflow
             $complaint = Complaint::query()->visibleTo($actor)->lockForUpdate()->findOrFail($complaintId);
 
             if (! in_array($complaint->status, $allowed, true)) {
-                throw new WorkflowConflict($refusal ? $refusal($complaint->status) : "This Complaint is already {$complaint->status->label()}.");
+                throw new WorkflowConflict(($refusal ? $refusal($complaint) : null) ?? "This Complaint is already {$complaint->status->label()}.");
             }
             if ($version !== null && $version !== $complaint->version) {
                 throw new WorkflowConflict("Someone else changed this Complaint after you opened it (it is now {$complaint->status->label()}). Reload it to see the latest.");
@@ -81,7 +175,7 @@ class ComplaintWorkflow
             $change($complaint);
 
             return $complaint;
-        });
+        }, attempts: 3);   // two reassignments in opposite directions can deadlock; InnoDB rolls one back and it is retried
     }
 
     /** Saves the new status (and any timestamps), bumps the version and appends the history row. */

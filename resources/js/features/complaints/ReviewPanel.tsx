@@ -70,6 +70,7 @@ function Classification({ complaint, onChanged }: Props) {
     const [busy, setBusy] = useState(false);
     const [error, setError] = useState<ApiError | null>(null);
     const [saved, setSaved] = useState(false);
+    const [warnings, setWarnings] = useState<string[]>([]);
 
     useEffect(() => {
         api.get<{ data: Category[] }>('/categories').then((response) => setCategories(response.data.data))
@@ -90,9 +91,10 @@ function Classification({ complaint, onChanged }: Props) {
         setBusy(true);
         setError(null);
         setSaved(false);
+        setWarnings([]);
         try {
             await ensureCsrfCookie();
-            const response = await api.patch<{ data: ComplaintDetail }>(`/complaints/${complaint.id}/classification`, {
+            const response = await api.patch<{ data: ComplaintDetail; warnings: string[] }>(`/complaints/${complaint.id}/classification`, {
                 category_id: categoryId === '' ? null : Number(categoryId),
                 priority,
                 priority_reason: needsReason ? reason : null,
@@ -101,6 +103,7 @@ function Classification({ complaint, onChanged }: Props) {
             onChanged(response.data.data);
             setReason('');
             setSaved(true);
+            setWarnings(response.data.warnings);
         } catch (caught) {
             setError(toApiError(caught));
         } finally {
@@ -131,6 +134,7 @@ function Classification({ complaint, onChanged }: Props) {
             <form onSubmit={submit} noValidate className="space-y-4">
                 {error && !showsInline && <Alert kind="error">{error.message}{error.status === 409 && ' Reload the page to see the latest.'}</Alert>}
                 {saved && <Alert kind="success">Classification saved.</Alert>}
+                {warnings.map((warning) => <Alert key={warning} kind="warning">{warning}</Alert>)}
 
                 <div className="space-y-1">
                     <label htmlFor="category" className="block text-sm font-medium">Category</label>

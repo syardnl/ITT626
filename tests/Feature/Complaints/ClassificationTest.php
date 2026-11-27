@@ -3,7 +3,6 @@
 use App\Enums\ComplaintStatus;
 use App\Enums\Role;
 use App\Models\Category;
-use App\Models\Complaint;
 
 require_once __DIR__.'/helpers.php';
 
@@ -33,12 +32,6 @@ function classificationsSeen(int $complaintId): array
     $timeline = test()->getJson("/api/v1/complaints/{$complaintId}")->assertOk()->json('data.timeline');
 
     return array_values(array_filter($timeline, fn (array $entry) => $entry['type'] === 'classification'));
-}
-
-/** No endpoint reaches these statuses until later Phase 3 tickets, so the status is set directly. */
-function forceStatus(int $complaintId, ComplaintStatus $status): void
-{
-    Complaint::findOrFail($complaintId)->update(['status' => $status]);
 }
 
 it('lets a Manager confirm the Category and the suggested Priority without a reason', function () {

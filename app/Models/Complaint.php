@@ -13,6 +13,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 
 /** A problem a Resident reported at a Unit or Common Area; source ERD: ISSUE. */
 class Complaint extends Model
@@ -72,6 +73,29 @@ class Complaint extends Model
     public function classificationChanges(): HasMany
     {
         return $this->hasMany(ClassificationChange::class)->orderBy('created_at')->orderBy('id');
+    }
+
+    /** Every Assignment, earliest first; reassignment ends one and starts the next. */
+    public function assignments(): HasMany
+    {
+        return $this->hasMany(Assignment::class)->orderBy('assigned_at')->orderBy('id');
+    }
+
+    /** The Assignment not yet ended, if any: whose work this Complaint is now. */
+    public function currentAssignment(): HasOne
+    {
+        return $this->hasOne(Assignment::class)->whereNull('ended_at');
+    }
+
+    /** A warning when the current assignee has no Skill for the Category (never a refusal: the Manager may reassign). */
+    public function skillMismatchWarning(): ?string
+    {
+        $technician = $this->currentAssignment?->technician;
+        if (! $technician || ! $this->category || $technician->hasSkillFor($this->category)) {
+            return null;
+        }
+
+        return "{$technician->user->name} has no {$this->category->name} Skill. Reassign the Complaint if they cannot do this work.";
     }
 
     public function comments(): HasMany

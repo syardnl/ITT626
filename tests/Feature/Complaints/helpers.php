@@ -1,9 +1,12 @@
 <?php
 
+use App\Enums\ComplaintStatus;
 use App\Enums\LocationImportance;
 use App\Enums\LocationType;
 use App\Enums\ResidentType;
 use App\Enums\Role;
+use App\Models\Category;
+use App\Models\Complaint;
 use App\Models\Location;
 use App\Models\Property;
 
@@ -93,4 +96,75 @@ function openComplaintsAt(int $locationId)
 function loadedVersion(int $complaintId): int
 {
     return test()->getJson("/api/v1/complaints/{$complaintId}")->json('data.version') ?? 1;
+}
+
+/**
+ * complaintsSetup() plus Block B, and Rina's Complaint at the Block A lift reviewed and classified
+ * as Lift (suggested Priority Low) by Maya, a Manager, who stays signed in.
+ */
+function assignmentSetup(): array
+{
+    $setup = complaintsSetup();
+    $blockB = place(LocationType::Block, null, 'B');
+    test()->actingAs($manager = account(Role::Manager, ['name' => 'Maya Manager']));
+    $setup = [...$setup, 'blockB' => $blockB, 'manager' => $manager, 'liftCategory' => Category::where('key', 'lift')->firstOrFail()];
+
+    return [...$setup, 'complaint' => classifiedComplaint($setup)];
+}
+
+/** Another Complaint by Rina at the Block A lift, reviewed and classified by the Manager, who stays signed in; its id. */
+function classifiedComplaint(array $setup, string $category = 'lift'): int
+{
+    test()->actingAs($setup['rina']);
+    $id = submitComplaint(complaintBody(['location_id' => $setup['lift']->id]))->assertCreated()->json('data.id');
+    test()->actingAs($setup['manager']);
+    test()->postJson("/api/v1/complaints/{$id}/review", ['version' => loadedVersion($id)])->assertOk();
+    test()->patchJson("/api/v1/complaints/{$id}/classification", [
+        'category_id' => Category::where('key', $category)->firstOrFail()->id, 'priority' => 'low', 'version' => loadedVersion($id),
+    ])->assertOk();
+
+    return $id;
+}
+
+/**
+ * A Technician account with a profile made through the API by the signed-in Manager: Available,
+ * maximum 5 tasks and the Lift Skill unless $profile says otherwise ('skills' lists Category keys).
+ * Returns the profile id and the account.
+ */
+function technicianProfile(string $name, int $homeBlockId, array $profile = []): array
+{
+    $user = account(Role::Technician, ['name' => $name]);
+    $skillIds = array_map(fn (string $key) => Category::where('key', $key)->firstOrFail()->skill->id, $profile['skills'] ?? ['lift']);
+    unset($profile['skills']);
+    $id = test()->postJson('/api/v1/technicians', [
+        'user_id' => $user->id, 'type' => 'in_house', 'skill_ids' => $skillIds,
+        'availability' => 'available', 'max_tasks' => 5, 'home_block_id' => $homeBlockId, ...$profile,
+    ])->assertCreated()->json('data.id');
+
+    return ['id' => $id, 'user' => $user];
+}
+
+function recommendationsFor(int $complaintId)
+{
+    return test()->getJson("/api/v1/complaints/{$complaintId}/technician-recommendations");
+}
+
+/** Assigns or reassigns, sending the version the signed-in account loaded unless $body names one. */
+function assign(int $complaintId, array $body)
+{
+    return test()->postJson("/api/v1/complaints/{$complaintId}/assignments", ['version' => loadedVersion($complaintId), ...$body]);
+}
+
+/** No endpoint reaches these statuses until later Phase 3 tickets, so the status is set directly. */
+function forceStatus(int $complaintId, ComplaintStatus $status): void
+{
+    Complaint::findOrFail($complaintId)->update(['status' => $status]);
+}
+
+/** The timeline entries of one type the signed-in account sees. */
+function timelineOf(int $complaintId, string $type): array
+{
+    $timeline = test()->getJson("/api/v1/complaints/{$complaintId}")->assertOk()->json('data.timeline');
+
+    return array_values(array_filter($timeline, fn (array $entry) => $entry['type'] === $type));
 }

@@ -7,6 +7,7 @@ import {
 } from '../../lib/api';
 import { useAuth } from '../../lib/auth';
 import { ComplaintTimeline } from './ComplaintTimeline';
+import { AssignmentPanel } from './AssignmentPanel';
 import { ReviewPanel } from './ReviewPanel';
 
 export function ComplaintDetailPage() {
@@ -61,7 +62,12 @@ export function ComplaintDetailPage() {
                 )}
             </dl>
 
-            {account?.role === 'manager' && <ReviewPanel complaint={complaint} onChanged={setComplaint} />}
+            {account?.role === 'manager' && (
+                <>
+                    <ReviewPanel complaint={complaint} onChanged={setComplaint} />
+                    <AssignmentPanel complaint={complaint} onChanged={setComplaint} />
+                </>
+            )}
 
             <section>
                 <h2 className="text-lg font-semibold">Description</h2>

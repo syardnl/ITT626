@@ -98,7 +98,7 @@ export function ComplaintDetailPage() {
                 complaintId={complaint.id}
                 timeline={complaint.timeline}
                 commenting={complaint.status === 'closed' ? null
-                    : account?.role === 'manager' || complaint.assigned_to_you ? 'staff'
+                    : account?.role === 'manager' || complaint.assigned_to_you ? 'manager_or_assignee'
                     : account?.role === 'resident' ? 'reporter' : null}
                 onCommented={(entry) => setComplaint({ ...complaint, timeline: [...complaint.timeline, entry] })}
             />

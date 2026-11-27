@@ -25,7 +25,7 @@ class StoreCommentRequest extends FormRequest
     public function authorize(): bool
     {
         $complaint = $this->complaint();
-        if (! $complaint->isReportedBy($this->user()) && ! $this->fromStaff()) {
+        if (! $complaint->isReportedBy($this->user()) && ! $this->fromManagerOrAssignee()) {
             return false;
         }
         if ($complaint->status === ComplaintStatus::Closed) {
@@ -39,19 +39,19 @@ class StoreCommentRequest extends FormRequest
     {
         return [
             'body' => ['required', 'string', 'between:1,2000'],
-            'visibility' => ['sometimes', Rule::enum(CommentVisibility::class), ...($this->fromStaff() ? [] : [Rule::in([CommentVisibility::Public->value])])],
+            'visibility' => ['sometimes', Rule::enum(CommentVisibility::class), ...($this->fromManagerOrAssignee() ? [] : [Rule::in([CommentVisibility::Public->value])])],
         ];
     }
 
     /** A Manager, or the Technician assigned to this Complaint. */
-    private function fromStaff(): bool
+    private function fromManagerOrAssignee(): bool
     {
         return $this->user()->hasRole(Role::Manager) || $this->complaint()->isAssignedTo($this->user());
     }
 
     public function messages(): array
     {
-        return ['visibility.in' => 'Only staff can post Internal Comments.'];
+        return ['visibility.in' => 'Only the Manager or the assigned Technician can post Internal Comments.'];
     }
 
     /** The Complaint being commented on, or 404 when the poster cannot see it. */

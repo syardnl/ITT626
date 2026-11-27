@@ -43,6 +43,7 @@ it('records the start of work in the audit log', function () {
 
 it('refuses to start work that is already In Progress or with the office', function (ComplaintStatus $status) {
     ['complaint' => $complaint] = technicianWorkSetup();
+    // No endpoint reaches these statuses until later Phase 3 tickets, so the status is set directly.
     forceStatus($complaint, $status);
 
     startWork($complaint)->assertConflict()->assertJsonPath('message', "This Complaint is already {$status->label()}.");

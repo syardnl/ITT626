@@ -113,10 +113,10 @@ class ComplaintWorkflow
     public function startWork(User $technician, int $complaintId, ?int $version): Complaint
     {
         return $this->act($technician, $complaintId, $version, ComplaintStatus::STARTABLE, function (Complaint $complaint) use ($technician) {
-            $assignment = $complaint->currentAssignment()->with('technician')->first();
-            if (! $assignment || ! $assignment->technician->isProfileOf($technician)) {
+            if (! $complaint->isAssignedTo($technician)) {
                 throw new WorkflowConflict('This Complaint is no longer assigned to you. Reload it to see the latest.');
             }
+            $assignment = $complaint->currentAssignment;
             $assignment->started_at ??= now();
             $assignment->save();
             $this->moveTo($complaint, ComplaintStatus::InProgress, $technician);

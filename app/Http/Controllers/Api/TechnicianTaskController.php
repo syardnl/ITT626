@@ -35,11 +35,11 @@ class TechnicianTaskController extends Controller
                 ? $inGroup->sortByDesc(fn (Complaint $complaint) => [$complaint->updated_at, $complaint->id])
                 : $inGroup->sortBy([
                     fn (Complaint $a, Complaint $b) => $a->priority->rank() <=> $b->priority->rank(),
-                    fn (Complaint $a, Complaint $b) => [$a->assignments->last()->assigned_at, $a->id] <=> [$b->assignments->last()->assigned_at, $b->id],
+                    fn (Complaint $a, Complaint $b) => [$a->latestAssignment()->assigned_at, $a->id] <=> [$b->latestAssignment()->assigned_at, $b->id],
                 ]);
             $groups[$group] = $sorted->values()->map(fn (Complaint $complaint) => [
                 ...(new ComplaintResource($complaint))->toArray($request),
-                'assigned_at' => $complaint->assignments->last()->assigned_at->utc()->format('Y-m-d\TH:i:s\Z'),
+                'assigned_at' => $complaint->latestAssignment()->assigned_at->utc()->format('Y-m-d\TH:i:s\Z'),
             ])->all();
         }
 

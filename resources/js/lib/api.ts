@@ -405,10 +405,12 @@ export interface ComplaintDetail extends Complaint {
     repair_cycles?: { number: number; started_at: string }[];
     /** Office only: whose work it is now; null before the first Assignment. */
     assignment?: CurrentAssignment | null;
-    /** When the Technician first started the work; null until then. */
-    started_at: string | null;
-    /** Technicians only: whether they hold the current Assignment, so may start work and comment. */
+    /** Staff only: when the Technician first started the work; null until then. */
+    started_at?: string | null;
+    /** Technicians only: whether they hold the current Assignment, so may comment. */
     assigned_to_you?: boolean;
+    /** Technicians only: theirs, and Assigned or Returned. */
+    can_start_work?: boolean;
     /** The office and the assigned Technician; only the office gets the email. */
     reporter?: { id: number; name: string; email?: string; unit: { id: number; code: string } | null };
 }

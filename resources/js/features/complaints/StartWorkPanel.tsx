@@ -12,7 +12,7 @@ export function StartWorkPanel({ complaint, onChanged }: Props) {
     const [busy, setBusy] = useState(false);
     const [error, setError] = useState<ApiError | null>(null);
     if (!complaint.assigned_to_you) return null;
-    const startable = complaint.status === 'assigned' || complaint.status === 'returned';
+    const startable = complaint.can_start_work === true;
 
     async function start() {
         setBusy(true);

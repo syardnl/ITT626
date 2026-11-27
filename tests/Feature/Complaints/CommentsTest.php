@@ -56,7 +56,7 @@ it('refuses an Internal Comment from the reporter', function () {
     ['complaint' => $complaint] = commentsSetup();
 
     postComment($complaint['id'], ['body' => 'Just for staff', 'visibility' => 'internal'])
-        ->assertUnprocessable()->assertJsonValidationErrors(['visibility' => 'Only staff can post Internal Comments.']);
+        ->assertUnprocessable()->assertJsonValidationErrors(['visibility' => 'Only the Manager or the assigned Technician can post Internal Comments.']);
 });
 
 it('rejects an unknown visibility', function () {

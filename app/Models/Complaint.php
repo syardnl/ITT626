@@ -174,6 +174,12 @@ class Complaint extends Model
             ->whereRaw('latest.id = (SELECT MAX(a.id) FROM complaint_assignments a WHERE a.complaint_id = complaints.id)'));
     }
 
+    /** The most recent Assignment, from the loaded `assignments`: whose work it is or last was. */
+    public function latestAssignment(): ?Assignment
+    {
+        return $this->assignments->last();
+    }
+
     /** Whether this account is the Technician holding the current Assignment: the one who may act on it. */
     public function isAssignedTo(User $user): bool
     {
@@ -191,6 +197,6 @@ class Complaint extends Model
      */
     public function isSeenInFullBy(User $viewer): bool
     {
-        return $this->isReportedBy($viewer) || $viewer->isOffice() || $viewer->hasRole(Role::Technician);
+        return $this->isReportedBy($viewer) || $viewer->isStaff();
     }
 }

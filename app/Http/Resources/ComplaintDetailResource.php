@@ -2,6 +2,7 @@
 
 namespace App\Http\Resources;
 
+use App\Enums\ComplaintStatus;
 use App\Enums\Role;
 use App\Models\Assignment;
 use App\Models\ClassificationChange;
@@ -34,7 +35,7 @@ class ComplaintDetailResource extends ComplaintResource
                 ...($request->user()->isOffice() ? ['default_priority' => $this->category->default_priority->value] : []),
             ] : null,
             // The office and the Technician; only the office sees the email.
-            'reporter' => $this->when($request->user()->isOffice() || $request->user()->hasRole(Role::Technician), fn () => [
+            'reporter' => $this->when($request->user()->isStaff(), fn () => [
                 'id' => $this->reporter->id,
                 'name' => $this->reporter->name,
                 ...($request->user()->isOffice() ? ['email' => $this->reporter->email] : []),
@@ -67,10 +68,12 @@ class ComplaintDetailResource extends ComplaintResource
             ])->all()),
             // The office sees whose work it is now; Technicians see their own from the next ticket on.
             'assignment' => $this->when($request->user()->isOffice(), fn () => $this->currentAssignmentEntry()),
-            // When the Technician first started the latest Assignment's work.
-            'started_at' => $this->assignments->last()?->started_at?->utc()->format('Y-m-d\TH:i:s\Z'),
-            // A Technician's own Complaint: they may start work and comment while it is theirs.
+            // Staff only: when the Technician first started the latest Assignment's work.
+            'started_at' => $this->when($request->user()->isStaff(), fn () => $this->latestAssignment()?->started_at?->utc()->format('Y-m-d\TH:i:s\Z')),
+            // A Technician's own Complaint: they may comment while it is theirs, and start work when ComplaintStatus::STARTABLE.
             'assigned_to_you' => $this->when($request->user()->hasRole(Role::Technician), fn () => $this->isAssignedTo($request->user())),
+            'can_start_work' => $this->when($request->user()->hasRole(Role::Technician), fn () => $this->isAssignedTo($request->user())
+                && in_array($this->status, ComplaintStatus::STARTABLE, true)),
             'timeline' => $this->timelineFor($request->user()),
         ];
     }

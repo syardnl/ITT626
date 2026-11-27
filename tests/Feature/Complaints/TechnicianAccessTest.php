@@ -80,7 +80,28 @@ it('lets the assigned Technician post Public and Internal Comments', function ()
 
 it('refuses comments from a Technician once the Complaint is Closed', function () {
     ['complaint' => $complaint] = technicianWorkSetup();
+    // No endpoint closes a Complaint until a later Phase 3 ticket, so the status is set directly.
     forceStatus($complaint, ComplaintStatus::Closed);
 
     $this->postJson("/api/v1/complaints/{$complaint}/comments", ['body' => 'Late note.'])->assertConflict();
+});
+
+it('conceals the Complaint, its photos and comments from a Technician reassigned away (read-only history comes later)', function () {
+    ['complaint' => $complaint, 'manager' => $manager, 'tariq' => $tariq, 'una' => $una] = technicianWorkSetup();
+    $this->actingAs($manager);
+    assign($complaint, ['technician_id' => $una['id'], 'reason' => 'Tariq is off sick.'])->assertOk();
+
+    $this->actingAs($tariq['user']);
+    $this->getJson("/api/v1/complaints/{$complaint}")->assertNotFound();
+    $this->postJson("/api/v1/complaints/{$complaint}/comments", ['body' => 'Still here?'])->assertNotFound();
+    $this->actingAs($una['user']);
+    $this->getJson("/api/v1/complaints/{$complaint}")->assertOk()->assertJsonPath('data.assigned_to_you', true)->assertJsonPath('data.can_start_work', true);
+});
+
+it('shows the reporter no start time', function () {
+    ['complaint' => $complaint, 'rina' => $rina] = technicianWorkSetup();
+    startWork($complaint)->assertOk();
+
+    $this->actingAs($rina);
+    $this->getJson("/api/v1/complaints/{$complaint}")->assertOk()->assertJsonMissingPath('data.started_at');
 });

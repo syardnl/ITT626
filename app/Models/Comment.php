@@ -3,7 +3,6 @@
 namespace App\Models;
 
 use App\Enums\CommentVisibility;
-use App\Enums\Role;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
@@ -37,6 +36,6 @@ class Comment extends Model
      */
     public function isVisibleTo(User $viewer): bool
     {
-        return $this->visibility === CommentVisibility::Public || $viewer->isOffice() || $viewer->hasRole(Role::Technician);
+        return $this->visibility === CommentVisibility::Public || $viewer->isStaff();
     }
 }

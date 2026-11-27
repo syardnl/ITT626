@@ -2,6 +2,7 @@
 
 namespace App\Http\Resources;
 
+use App\Models\Assignment;
 use App\Models\ClassificationChange;
 use App\Models\Comment;
 use App\Models\Complaint;
@@ -18,7 +19,8 @@ use Illuminate\Http\Request;
 class ComplaintDetailResource extends ComplaintResource
 {
     public const RELATIONS = ['location', 'category', 'statusHistory.actor', 'reporter.unit', 'evidence.uploader', 'comments.author.roles', 'repairCycles',
-        'classificationChanges.actor', 'classificationChanges.fromCategory', 'classificationChanges.toCategory'];
+        'classificationChanges.actor', 'classificationChanges.fromCategory', 'classificationChanges.toCategory',
+        'assignments.technician.user', 'assignments.assigner'];
 
     public function toArray(Request $request): array
     {
@@ -61,14 +63,29 @@ class ComplaintDetailResource extends ComplaintResource
                 'number' => $cycle->number,
                 'started_at' => $cycle->started_at->utc()->format('Y-m-d\TH:i:s\Z'),
             ])->all()),
+            // The office sees whose work it is now; Technicians see their own from the next ticket on.
+            'assignment' => $this->when($request->user()->isOffice(), fn () => $this->currentAssignmentEntry()),
             'timeline' => $this->timelineFor($request->user()),
         ];
     }
 
+    private function currentAssignmentEntry(): ?array
+    {
+        $current = $this->assignments->firstWhere('ended_at', null);
+
+        return $current ? [
+            'id' => $current->id,
+            'technician' => ['id' => $current->technician->id, 'name' => $current->technician->user->name],
+            'assigned_by' => ['id' => $current->assigner->id, 'name' => $current->assigner->name],
+            'assigned_at' => $current->assigned_at->utc()->format('Y-m-d\TH:i:s\Z'),
+            'override_reason' => $current->override_reason,
+        ] : null;
+    }
+
     /**
-     * Status changes, classifications (office only) and the comments this viewer may read, oldest
-     * first. Entries at the same second keep the order they were stored in: status changes, then
-     * classifications, then comments.
+     * Status changes, classifications and Assignments (office only) and the comments this viewer may
+     * read, oldest first. Entries at the same second keep the order they were stored in: status
+     * changes, then classifications, then Assignments, then comments.
      */
     private function timelineFor(User $viewer): array
     {
@@ -78,12 +95,17 @@ class ComplaintDetailResource extends ComplaintResource
         $classifications = $viewer->isOffice() ? $this->classificationChanges->map(fn (ClassificationChange $change) => [
             'at' => $change->created_at->getTimestamp(), 'kind' => 1, 'id' => $change->id, 'entry' => TimelineEntry::classification($change),
         ]) : collect();
+        // Each Assignment after the first replaced the one before it.
+        $assignments = $viewer->isOffice() ? $this->assignments->values()->map(fn (Assignment $assignment, int $index) => [
+            'at' => $assignment->assigned_at->getTimestamp(), 'kind' => 2, 'id' => $assignment->id,
+            'entry' => TimelineEntry::assignment($assignment, $index > 0 ? $this->assignments[$index - 1] : null),
+        ]) : collect();
         $comments = $this->comments->filter(fn (Comment $comment) => $comment->isVisibleTo($viewer))->map(fn (Comment $comment) => [
-            'at' => $comment->created_at->getTimestamp(), 'kind' => 2, 'id' => $comment->id, 'entry' => TimelineEntry::comment($comment),
+            'at' => $comment->created_at->getTimestamp(), 'kind' => 3, 'id' => $comment->id, 'entry' => TimelineEntry::comment($comment),
         ]);
 
         // `kind` breaks a same-second tie.
-        return $statuses->concat($classifications)->concat($comments)
+        return $statuses->concat($classifications)->concat($assignments)->concat($comments)
             ->sortBy([['at', 'asc'], ['kind', 'asc'], ['id', 'asc']])
             ->pluck('entry')
             ->values()

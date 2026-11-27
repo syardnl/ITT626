@@ -54,6 +54,8 @@ Route::middleware(['auth:sanctum', 'active'])->group(function () {
     Route::middleware('role:manager')->group(function () {
         Route::post('/complaints/{complaint}/review', [ComplaintWorkflowController::class, 'review'])->whereNumber('complaint');
         Route::patch('/complaints/{complaint}/classification', [ComplaintWorkflowController::class, 'classify'])->whereNumber('complaint');
+        Route::get('/complaints/{complaint}/technician-recommendations', [ComplaintWorkflowController::class, 'recommendations'])->whereNumber('complaint');
+        Route::post('/complaints/{complaint}/assignments', [ComplaintWorkflowController::class, 'assign'])->whereNumber('complaint');
     });
 
     Route::middleware('role:technician')->get('/technician/profile', [TechnicianController::class, 'mine']);

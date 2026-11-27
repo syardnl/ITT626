@@ -87,4 +87,6 @@ it('admits each role to the Complaint endpoints it may call', function (string $
     'comment' => ['POST', '/api/v1/complaints/999999/comments', [Role::Resident, Role::Manager]],
     'begin review' => ['POST', '/api/v1/complaints/999999/review', [Role::Manager]],
     'classify' => ['PATCH', '/api/v1/complaints/999999/classification', [Role::Manager]],
+    'technician recommendations' => ['GET', '/api/v1/complaints/999999/technician-recommendations', [Role::Manager]],
+    'assign or reassign' => ['POST', '/api/v1/complaints/999999/assignments', [Role::Manager]],
 ]);

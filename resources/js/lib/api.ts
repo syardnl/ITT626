@@ -324,7 +324,47 @@ export interface ClassificationTimelineEntry {
     at: string;
 }
 
-export type TimelineEntry = StatusTimelineEntry | ClassificationTimelineEntry | CommentTimelineEntry;
+/** A Technician assigned, or a reassignment (previous_technician and reason set); shown to the office only. */
+export interface AssignmentTimelineEntry {
+    type: 'assignment';
+    id: number;
+    technician: { id: number; name: string };
+    previous_technician: { id: number; name: string } | null;
+    reason: string | null;
+    /** Why the Manager assigned above the Technician's maximum tasks. */
+    override_reason: string | null;
+    actor: { id: number; name: string };
+    at: string;
+}
+
+export type TimelineEntry = StatusTimelineEntry | ClassificationTimelineEntry | AssignmentTimelineEntry | CommentTimelineEntry;
+
+/** A Complaint's current Assignment, as the office sees it. */
+export interface CurrentAssignment {
+    id: number;
+    technician: { id: number; name: string };
+    assigned_by: { id: number; name: string };
+    assigned_at: string;
+    override_reason: string | null;
+}
+
+/** One ranked Technician for a Complaint (GET /complaints/{id}/technician-recommendations), best first. */
+export interface TechnicianRecommendation {
+    rank: number;
+    technician: { id: number; name: string; type: TechnicianType; company_name: string | null };
+    availability: Exclude<Availability, 'on_leave'>;
+    skill_match: boolean;
+    active_tasks: number;
+    max_tasks: number;
+    /** At or above maximum tasks: assigning needs override_capacity and an override_reason. */
+    at_capacity: boolean;
+    same_block: boolean;
+    home_block: { id: number; code: string; name: string };
+    /** Already assigned this Complaint. */
+    current: boolean;
+    reasons: string[];
+    warnings: string[];
+}
 
 /** A report photo, served by GET /attachments/{id} to the reporter, Managers and Administrators. */
 export interface EvidencePhoto {
@@ -363,6 +403,8 @@ export interface ComplaintDetail extends Complaint {
     timeline: TimelineEntry[];
     /** Office only. Cycle 1 starts at submission; each Resident Return starts another. */
     repair_cycles?: { number: number; started_at: string }[];
+    /** Office only: whose work it is now; null before the first Assignment. */
+    assignment?: CurrentAssignment | null;
     /** Present for the office (Manager, Administrator) only. */
     reporter?: { id: number; name: string; email: string; unit: { id: number; code: string } | null };
 }

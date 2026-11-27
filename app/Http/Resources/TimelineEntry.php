@@ -2,11 +2,12 @@
 
 namespace App\Http\Resources;
 
+use App\Models\Assignment;
 use App\Models\ClassificationChange;
 use App\Models\Comment;
 use App\Models\StatusChange;
 
-/** One line of a Complaint's timeline: a status change, a classification or a comment, with when it happened in UTC. */
+/** One line of a Complaint's timeline: a status change, a classification, an Assignment or a comment, with when it happened in UTC. */
 final class TimelineEntry
 {
     public static function status(StatusChange $change): array
@@ -37,6 +38,23 @@ final class TimelineEntry
             'reason' => $change->reason,
             'actor' => ['id' => $change->actor->id, 'name' => $change->actor->name],
             'at' => $change->created_at->utc()->format('Y-m-d\TH:i:s\Z'),
+        ];
+    }
+
+    /** Office only. $previous is the Assignment this one replaced; its end reason is the reassignment's. */
+    public static function assignment(Assignment $assignment, ?Assignment $previous): array
+    {
+        $technician = fn (?Assignment $of) => $of ? ['id' => $of->technician->id, 'name' => $of->technician->user->name] : null;
+
+        return [
+            'type' => 'assignment',
+            'id' => $assignment->id,
+            'technician' => $technician($assignment),
+            'previous_technician' => $technician($previous),
+            'reason' => $previous?->end_reason,
+            'override_reason' => $assignment->override_reason,
+            'actor' => ['id' => $assignment->assigner->id, 'name' => $assignment->assigner->name],
+            'at' => $assignment->assigned_at->utc()->format('Y-m-d\TH:i:s\Z'),
         ];
     }
 

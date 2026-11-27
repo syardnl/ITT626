@@ -41,6 +41,15 @@ export function ComplaintTimeline({ complaintId, timeline, commenting, onComment
                                 </p>
                                 {entry.reason && <p className="text-sm">{entry.reason}</p>}
                             </>
+                        ) : entry.type === 'assignment' ? (
+                            <>
+                                <p className="font-medium">
+                                    {entry.previous_technician ? `Reassigned from ${entry.previous_technician.name} to ${entry.technician.name}` : `Assigned to ${entry.technician.name}`}
+                                </p>
+                                <p className="text-sm text-slate-600">{formatDateTime(entry.at)} · {entry.actor.name}</p>
+                                {entry.reason && <p className="text-sm">{entry.reason}</p>}
+                                {entry.override_reason && <p className="text-sm">Above maximum tasks: {entry.override_reason}</p>}
+                            </>
                         ) : (
                             <div className={`rounded-md p-3 ${entry.visibility === 'internal' ? 'border border-amber-300 bg-amber-50' : 'border border-slate-200 bg-white'}`}>
                                 <p className="text-sm text-slate-600">

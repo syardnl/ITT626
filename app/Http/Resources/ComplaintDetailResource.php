@@ -25,7 +25,7 @@ class ComplaintDetailResource extends ComplaintResource
     public const RELATIONS = ['location', 'category', 'statusHistory.actor', 'reporter.unit', 'evidence.uploader', 'comments.author.roles', 'repairCycles',
         'classificationChanges.actor', 'classificationChanges.fromCategory', 'classificationChanges.toCategory',
         'assignments.technician.user', 'assignments.assigner',
-        'maintenanceRecords.technician.user', 'maintenanceRecords.expenses', 'maintenanceRecords.photos', 'maintenanceRecords.repairCycle', 'evidence.maintenanceRecord.technician'];
+        'maintenanceRecords.technician.user', 'maintenanceRecords.verifier', 'maintenanceRecords.expenses', 'maintenanceRecords.photos', 'maintenanceRecords.repairCycle', 'evidence.maintenanceRecord.technician'];
 
     public function toArray(Request $request): array
     {
@@ -53,6 +53,7 @@ class ComplaintDetailResource extends ComplaintResource
             'priority_rule_version' => $this->priority_rule_version,
             'initial_priority' => $this->initial_priority->value,
             'reviewed_at' => $this->reviewed_at?->utc()->format('Y-m-d\TH:i:s\Z'),
+            'resolved_at' => $this->resolved_at?->utc()->format('Y-m-d\TH:i:s\Z'),
             // Sent back with a workflow action, so a change made meanwhile by someone else is refused (409).
             'version' => $this->version,
             'evidence' => $this->evidence->filter(fn (Evidence $photo) => $photo->isShownTo($request->user()))->values()->map(fn (Evidence $photo) => [
@@ -109,6 +110,9 @@ class ComplaintDetailResource extends ComplaintResource
                 'photo_ids' => $record->photos->pluck('id')->all(),
                 'submitted_at' => $record->submitted_at->utc()->format('Y-m-d\TH:i:s\Z'),
                 'verification_outcome' => $record->verification_outcome,
+                'verification_reason' => $record->verification_reason,
+                'verified_by' => $record->verifier ? ['id' => $record->verifier->id, 'name' => $record->verifier->name] : null,
+                'verified_at' => $record->verified_at?->utc()->format('Y-m-d\TH:i:s\Z'),
             ] : [
                 'id' => $record->id,
                 'attempt' => $record->attempt,
@@ -132,9 +136,9 @@ class ComplaintDetailResource extends ComplaintResource
     }
 
     /**
-     * Status changes, classifications and Assignments (office only) and the comments this viewer may
-     * read, oldest first. Entries at the same second keep the order they were stored in: status
-     * changes, then classifications, then Assignments, then comments.
+     * Status changes, classifications and Assignments (office only), verifications (staff) and the
+     * comments this viewer may read, oldest first. Entries at the same second keep the order they
+     * were stored in: status changes, classifications, Assignments, verifications, then comments.
      */
     private function timelineFor(User $viewer): array
     {
@@ -149,12 +153,18 @@ class ComplaintDetailResource extends ComplaintResource
             'at' => $assignment->assigned_at->getTimestamp(), 'kind' => 2, 'id' => $assignment->id,
             'entry' => TimelineEntry::assignment($assignment, $index > 0 ? $this->assignments[$index - 1] : null),
         ]) : collect();
+        // Staff only: a Manager Rejection's reason is not for the reporter.
+        $verifications = $viewer->isStaff() ? $this->maintenanceRecords
+            ->filter(fn (MaintenanceRecord $record) => $record->verified_at !== null && $record->isShownTo($viewer))
+            ->map(fn (MaintenanceRecord $record) => [
+                'at' => $record->verified_at->getTimestamp(), 'kind' => 3, 'id' => $record->id, 'entry' => TimelineEntry::verification($record),
+            ]) : collect();
         $comments = $this->comments->filter(fn (Comment $comment) => $comment->isVisibleTo($viewer, $this->resource))->map(fn (Comment $comment) => [
-            'at' => $comment->created_at->getTimestamp(), 'kind' => 3, 'id' => $comment->id, 'entry' => TimelineEntry::comment($comment),
+            'at' => $comment->created_at->getTimestamp(), 'kind' => 4, 'id' => $comment->id, 'entry' => TimelineEntry::comment($comment),
         ]);
 
         // `kind` breaks a same-second tie.
-        return $statuses->concat($classifications)->concat($assignments)->concat($comments)
+        return $statuses->concat($classifications)->concat($assignments)->concat($verifications)->concat($comments)
             ->sortBy([['at', 'asc'], ['kind', 'asc'], ['id', 'asc']])
             ->pluck('entry')
             ->values()

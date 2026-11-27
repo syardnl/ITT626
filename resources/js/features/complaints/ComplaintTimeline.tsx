@@ -41,6 +41,14 @@ export function ComplaintTimeline({ complaintId, timeline, commenting, onComment
                                 </p>
                                 {entry.reason && <p className="text-sm">{entry.reason}</p>}
                             </>
+                        ) : entry.type === 'verification' ? (
+                            <>
+                                <p className="font-medium">
+                                    {entry.outcome === 'approved' ? `Work approved (Maintenance Record ${entry.attempt})` : `Work returned to the Technician (Maintenance Record ${entry.attempt})`}
+                                </p>
+                                <p className="text-sm text-slate-600">{formatDateTime(entry.at)} · {entry.actor.name}</p>
+                                {entry.reason && <p className="text-sm">{entry.reason}</p>}
+                            </>
                         ) : entry.type === 'assignment' ? (
                             <>
                                 <p className="font-medium">

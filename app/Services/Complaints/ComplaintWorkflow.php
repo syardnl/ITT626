@@ -6,6 +6,7 @@ use App\Enums\AuditAction;
 use App\Enums\CommentVisibility;
 use App\Enums\ComplaintStatus;
 use App\Enums\Priority;
+use App\Enums\VerificationDecision;
 use App\Models\Category;
 use App\Models\Complaint;
 use App\Models\MaintenanceRecord;
@@ -13,6 +14,7 @@ use App\Models\Technician;
 use App\Models\User;
 use App\Services\Assignments\AssignmentDetails;
 use App\Services\Audit\AuditTrail;
+use Carbon\CarbonInterface;
 use Closure;
 use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Support\Facades\DB;
@@ -190,6 +192,41 @@ class ComplaintWorkflow
         }
     }
 
+    /**
+     * The Manager's verification of the latest Maintenance Record. Approve: Pending Verification →
+     * Resolved, recording the Resolution time. Return (a Manager Rejection, with a reason): →
+     * Returned, to the same Technician, in the same Repair Cycle (ADR 0005). The reason stays with
+     * the record and the audit log, for staff only.
+     */
+    public function verify(User $manager, int $complaintId, VerificationDecision $decision, ?string $reason, ?int $version): Complaint
+    {
+        $reason = $decision === VerificationDecision::Return ? $reason : null;   // only a Manager Rejection has one
+
+        return $this->act($manager, $complaintId, $version, [ComplaintStatus::PendingVerification], function (Complaint $complaint) use ($manager, $decision, $reason) {
+            $now = now();   // one instant for the verification, the Resolution and the status row
+            $record = $complaint->maintenanceRecords()->reorder('attempt', 'desc')->firstOrFail();
+            $record->forceFill([
+                'verification_outcome' => $decision->outcome(),
+                'verification_reason' => $reason,
+                'verified_by' => $manager->id,
+                'verified_at' => $now,
+            ])->save();
+
+            // The reason stays off the status row, which the reporter reads; staff see it as a verification entry.
+            $this->moveTo($complaint, $decision->status(), $manager, $decision === VerificationDecision::Approve ? ['resolved_at' => $now] : [], at: $now);
+            $this->audit->recordChange($decision->auditAction(), $complaint, metadata: array_filter([
+                'maintenance_record_id' => $record->id,
+                'reason' => $reason,
+            ], fn ($value) => $value !== null));
+        }, fn (Complaint $complaint) => self::verificationRefusal($complaint->status));
+    }
+
+    /** Why work in this status cannot be verified; shared with VerifyWorkRequest's early check. */
+    public static function verificationRefusal(ComplaintStatus $status): string
+    {
+        return "This Complaint is {$status->label()}, not Pending Verification.";
+    }
+
     /** Why work in this status cannot be completed; shared with CompleteWorkRequest's early check. */
     public static function completionRefusal(ComplaintStatus $status): string
     {
@@ -283,10 +320,14 @@ class ComplaintWorkflow
     }
 
     /** Saves the new status (and any timestamps), bumps the version and appends the history row. */
-    private function moveTo(Complaint $complaint, ComplaintStatus $to, ?User $actor, array $attributes = [], ?string $reason = null): void
+    private function moveTo(Complaint $complaint, ComplaintStatus $to, ?User $actor, array $attributes = [], ?string $reason = null, ?CarbonInterface $at = null): void
     {
         $from = $complaint->status;
         $complaint->forceFill([...$attributes, 'status' => $to, 'version' => $complaint->version + 1])->save();
-        $complaint->statusHistory()->create(['changed_by' => $actor?->id, 'from_status' => $from, 'to_status' => $to, 'reason' => $reason]);
+        $row = $complaint->statusHistory()->make(['changed_by' => $actor?->id, 'from_status' => $from, 'to_status' => $to, 'reason' => $reason]);
+        if ($at !== null) {
+            $row->created_at = $at;   // the same instant as the change's other timestamps
+        }
+        $row->save();
     }
 }

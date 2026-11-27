@@ -62,7 +62,12 @@ class DemoComplaintSeeder extends Seeder
             'category_id' => Category::where('key', $categoryKey)->firstOrFail()->id,
         ];
 
-        return $intake->submit($reporter, $answers, [$this->samplePhoto($answers['title'], $colour)], $key);
+        $photo = $this->samplePhoto($answers['title'], $colour);
+        try {
+            return $intake->submit($reporter, $answers, [$photo], $key);
+        } finally {
+            @unlink($photo->getRealPath());   // the intake has stored its own re-encoded copy
+        }
     }
 
     /** A plain coloured 1200×900 JPEG captioned with the Complaint's title: a stand-in for a phone photo. */

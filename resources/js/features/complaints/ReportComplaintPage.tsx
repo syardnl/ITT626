@@ -122,7 +122,7 @@ export function ReportComplaintPage() {
                         <Alert kind="error">{Object.keys(error.errors).length ? 'Please check the answers marked below.' : error.message}</Alert>
                     </div>
                 )}
-                <p className="text-sm text-slate-600">Fields marked <span aria-hidden="true">*</span><span className="sr-only">required</span> are required.</p>
+                <p className="text-sm text-slate-600">Fields marked with an asterisk (*) are required.</p>
 
                 <fieldset className="space-y-2" aria-describedby={fieldError('my_unit') ? 'my-unit-error' : undefined}>
                     <legend className="text-sm font-medium">Where is the problem? <Required /></legend>
@@ -148,7 +148,7 @@ export function ReportComplaintPage() {
                         <div className="space-y-1">
                             <label htmlFor="location" className="block text-sm font-medium">Common Area <Required /></label>
                             <select
-                                id="location" aria-required="true" value={locationId} onChange={(e) => setLocationId(e.target.value)}
+                                id="location" value={locationId} onChange={(e) => setLocationId(e.target.value)}
                                 aria-invalid={fieldError('location_id') ? true : undefined}
                                 aria-describedby={fieldError('location_id') ? 'location-error' : undefined}
                                 className={inputClassName}
@@ -163,14 +163,14 @@ export function ReportComplaintPage() {
                 )}
 
                 <TextField
-                    id="title" label={<>Short title <Required /></>} aria-required="true" value={title} onChange={(e) => setTitle(e.target.value)}
+                    id="title" label={<>Short title <Required /></>} value={title} onChange={(e) => setTitle(e.target.value)}
                     maxLength={150} hint="5–150 characters, e.g. “Lift B1 not operating”" error={fieldError('title')}
                 />
 
                 <div className="space-y-1">
                     <label htmlFor="description" className="block text-sm font-medium">What is wrong? <Required /></label>
                     <textarea
-                        id="description" aria-required="true" rows={5} value={description} onChange={(e) => setDescription(e.target.value)} maxLength={3000}
+                        id="description" rows={5} value={description} onChange={(e) => setDescription(e.target.value)} maxLength={3000}
                         aria-invalid={fieldError('description') ? true : undefined}
                         aria-describedby={fieldError('description') ? 'description-error description-hint' : 'description-hint'}
                         className={`${inputClassName} py-2`}
@@ -237,7 +237,7 @@ export function ReportComplaintPage() {
     );
 }
 
-/** The asterisk after a required field's label; screen readers hear "required" from aria-required or the word. */
+/** The asterisk after a required field's label; screen readers hear "(required)" instead, so the field needs no aria-required. */
 function Required() {
     return <span className="text-red-700"><span aria-hidden="true">*</span><span className="sr-only">(required)</span></span>;
 }

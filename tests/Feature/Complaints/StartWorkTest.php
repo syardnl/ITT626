@@ -38,7 +38,8 @@ it('records the start of work in the audit log', function () {
     $entry = $this->getJson('/api/v1/admin/audit-logs?action=complaint.work_started')->assertOk()->json('data.0');
     expect($entry)->toMatchArray(['target_type' => 'complaint', 'target_id' => $complaint])
         ->and($entry['actor']['id'])->toBe($tariq['user']->id)
-        ->and($entry['changes']['status'])->toBe(['from' => 'assigned', 'to' => 'in_progress']);
+        ->and($entry['changes']['status'])->toBe(['from' => 'assigned', 'to' => 'in_progress'])
+        ->and($entry['metadata'])->toHaveKeys(['assignment_id', 'started_at']);
 });
 
 it('refuses to start work that is already In Progress or with the office', function (ComplaintStatus $status) {

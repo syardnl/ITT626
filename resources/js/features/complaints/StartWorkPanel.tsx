@@ -37,7 +37,7 @@ export function StartWorkPanel({ complaint, onChanged }: Props) {
                     {complaint.status === 'returned' ? 'This was sent back to you. Start work again when you are on site.' : 'Start work when you begin the repair.'}
                 </p>
             )}
-            {error && <Alert kind="error">{error.message}{error.status === 409 && ' Reload the page to see the latest.'}</Alert>}
+            {error && <Alert kind="error">{error.message}{[403, 404, 409].includes(error.status) && ' Reload the page to see the latest.'}</Alert>}
             {startable && (
                 <button
                     type="button" onClick={start} disabled={busy}

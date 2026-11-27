@@ -31,11 +31,11 @@ class Comment extends Model
     }
 
     /**
-     * Internal Comments are for staff: Managers, Administrators read-only, and the Technician, who
-     * only ever opens Complaints assigned to them (Complaint::visibleTo). Followers never reach a timeline.
+     * Internal Comments: Managers, Administrators read-only, and the Technician holding the
+     * Complaint's latest Assignment (Complaint::showsInternalCommentsTo). Followers never reach a timeline.
      */
-    public function isVisibleTo(User $viewer): bool
+    public function isVisibleTo(User $viewer, Complaint $on): bool
     {
-        return $this->visibility === CommentVisibility::Public || $viewer->isStaff();
+        return $this->visibility === CommentVisibility::Public || $on->showsInternalCommentsTo($viewer);
     }
 }

@@ -174,10 +174,28 @@ class Complaint extends Model
             ->whereRaw('latest.id = (SELECT MAX(a.id) FROM complaint_assignments a WHERE a.complaint_id = complaints.id)'));
     }
 
-    /** The most recent Assignment, from the loaded `assignments`: whose work it is or last was. */
+    /**
+     * The most recent Assignment, from the loaded `assignments`: whose work it is or last was. The
+     * highest id, as scopeLatestAssignmentHeldBy picks it, whatever the assigned_at times say.
+     */
     public function latestAssignment(): ?Assignment
     {
-        return $this->assignments->last();
+        return $this->assignments->sortBy('id')->last();
+    }
+
+    /**
+     * Whether this account is the Technician holding the latest Assignment: their current one, or
+     * one ended only by Closure. They see staff detail (Internal Comments) and may comment until Closed.
+     */
+    public function hasLatestAssignee(User $user): bool
+    {
+        return $user->hasRole(Role::Technician) && $this->latestAssignment()?->technician?->isProfileOf($user) === true;
+    }
+
+    /** Whether this viewer reads Internal Comments here: the office, or the latest assignee. */
+    public function showsInternalCommentsTo(User $viewer): bool
+    {
+        return $viewer->isOffice() || $this->hasLatestAssignee($viewer);
     }
 
     /** Whether this account is the Technician holding the current Assignment: the one who may act on it. */

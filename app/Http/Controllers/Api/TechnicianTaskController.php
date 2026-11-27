@@ -19,14 +19,16 @@ class TechnicianTaskController extends Controller
         'completed' => [ComplaintStatus::PendingVerification, ComplaintStatus::Resolved, ComplaintStatus::Closed],
     ];
 
+    private const COMPLETED_SHOWN = 20;
+
     /** Each group runs most urgent first, then longest assigned; Completed runs most recently changed first. */
     public function __invoke(Request $request): JsonResponse
     {
         $technician = $request->user()->technician;
-        $tasks = $technician === null ? collect() : Complaint::query()
-            ->latestAssignmentHeldBy($technician->id)
-            ->with(['location', 'category', 'assignments'])
-            ->get();
+        $query = fn () => Complaint::query()->latestAssignmentHeldBy($technician->id)->with(['location', 'category', 'assignments']);
+        // Open work in full; finished work only the most recent, so the list does not grow forever.
+        $tasks = $technician === null ? collect() : $query()->whereNotIn('status', self::GROUPS['completed'])->get()
+            ->concat($query()->whereIn('status', self::GROUPS['completed'])->latest('updated_at')->latest('id')->limit(self::COMPLETED_SHOWN)->get());
 
         $groups = [];
         foreach (self::GROUPS as $group => $statuses) {

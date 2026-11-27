@@ -67,8 +67,8 @@ class User extends Authenticatable
     }
 
     /**
-     * Managers, Administrators and Technicians: on a Complaint they may open, they read Internal
-     * Comments and the reporter's name. A Technician only ever opens their own (Complaint::visibleTo).
+     * Managers, Administrators and Technicians: on a Complaint they may open, they see the reporter's
+     * name and Unit. A Technician only ever opens their own (Complaint::visibleTo).
      */
     public function isStaff(): bool
     {

@@ -43,10 +43,10 @@ class StoreCommentRequest extends FormRequest
         ];
     }
 
-    /** A Manager, or the Technician assigned to this Complaint. */
+    /** A Manager, or the Technician holding the latest Assignment (so a Closed Complaint answers 409, not 403). */
     private function fromManagerOrAssignee(): bool
     {
-        return $this->user()->hasRole(Role::Manager) || $this->complaint()->isAssignedTo($this->user());
+        return $this->user()->hasRole(Role::Manager) || $this->complaint()->hasLatestAssignee($this->user());
     }
 
     public function messages(): array

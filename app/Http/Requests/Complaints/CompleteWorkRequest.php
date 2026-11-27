@@ -34,7 +34,7 @@ class CompleteWorkRequest extends FormRequest
     {
         $complaint = Complaint::query()->visibleTo($this->user())->findOrFail((int) $this->route('complaint'));
         $key = $this->input('idempotency_key');
-        if (is_string($key) && $workflow->completedWith($this->user(), $complaint->id, $key)) {
+        if (is_string($key) && $workflow->findCompletedWith($this->user(), $complaint->id, $key)) {
             return true;   // a retry of a completion that succeeded: answered with the Complaint as it is now
         }
         if (! $complaint->isAssignedTo($this->user())) {
@@ -56,7 +56,7 @@ class CompleteWorkRequest extends FormRequest
             'notes' => ['nullable', 'string', 'max:2000'],
             'expenses' => ['sometimes', 'array', 'max:20'],
             'expenses.*.description' => ['required', 'string', 'max:200'],
-            'expenses.*.quantity' => ['required', 'numeric', 'min:0.01', 'max:999999.99'],
+            'expenses.*.quantity' => ['required', 'decimal:0,2', 'min:0.01', 'max:999999.99'],
             'expenses.*.amount' => ['required', 'decimal:0,2', 'min:0', 'max:99999999.99'],
             'photos' => ['required', 'list', 'max:5'],
             'photos.*' => ['file', 'max:10240', 'mimetypes:'.implode(',', EvidencePhotos::ACCEPTED_MIME)],
@@ -91,6 +91,7 @@ class CompleteWorkRequest extends FormRequest
             'photos.*.max' => 'Each photo must be 10 MB or smaller.',
             'photos.*.mimetypes' => 'Each photo must be a JPEG, PNG or WebP image.',
             'photo_tags.*.in' => 'Tag each photo as Before or After.',
+            'expenses.*.quantity.decimal' => 'Give the quantity with at most two decimals.',
             'expenses.*.amount.decimal' => 'Give the amount in ringgit with at most two decimals, e.g. 12.50.',
             'idempotency_key.regex' => 'The Idempotency-Key header must be 16–100 letters, digits, hyphens or underscores.',
         ];

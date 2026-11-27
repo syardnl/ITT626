@@ -10,7 +10,7 @@ import { ComplaintTimeline } from './ComplaintTimeline';
 import { AssignmentPanel } from './AssignmentPanel';
 import { MaintenanceRecords } from './MaintenanceRecords';
 import { ReviewPanel } from './ReviewPanel';
-import { StartWorkPanel } from './StartWorkPanel';
+import { TechnicianWorkPanel } from './TechnicianWorkPanel';
 
 export function ComplaintDetailPage() {
     const { id } = useParams();
@@ -70,7 +70,7 @@ export function ComplaintDetailPage() {
                     <AssignmentPanel complaint={complaint} onChanged={setComplaint} />
                 </>
             )}
-            {account?.role === 'technician' && <StartWorkPanel complaint={complaint} onChanged={setComplaint} />}
+            {account?.role === 'technician' && <TechnicianWorkPanel complaint={complaint} onChanged={setComplaint} />}
 
             <section>
                 <h2 className="text-lg font-semibold">Description</h2>

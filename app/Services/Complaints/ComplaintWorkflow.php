@@ -139,8 +139,8 @@ class ComplaintWorkflow
      */
     public function completeWork(User $technician, int $complaintId, CompletionDetails $details, ?int $version): Complaint
     {
-        if ($done = $this->completedWith($technician, $complaintId, $details->key)) {
-            return $done;
+        if ($original = $this->findCompletedWith($technician, $complaintId, $details->key)) {
+            return $original;
         }
 
         $prepared = $this->photos->prepare(array_column($details->photos, 'file'));
@@ -176,9 +176,15 @@ class ComplaintWorkflow
         } catch (Throwable $failure) {
             $this->photos->discard($written);   // the rows rolled back; the files must go too
 
-            // The same key arrived twice at once and the other request committed first.
-            if ($failure instanceof UniqueConstraintViolationException && $done = $this->completedWith($technician, $complaintId, $details->key)) {
-                return $done;
+            // The same key arrived twice at once and the other request committed first: it waited on the
+            // row lock and then found Pending Verification (409), or lost the race to insert (unique key).
+            if ($failure instanceof WorkflowConflict || $failure instanceof UniqueConstraintViolationException) {
+                if ($original = $this->findCompletedWith($technician, $complaintId, $details->key)) {
+                    return $original;
+                }
+            }
+            if ($failure instanceof UniqueConstraintViolationException && $details->key !== null) {
+                throw ValidationException::withMessages(['idempotency_key' => 'This Idempotency-Key was already used for another completion.']);
             }
             throw $failure;
         }
@@ -192,16 +198,16 @@ class ComplaintWorkflow
             : "This Complaint is already {$status->label()}.";
     }
 
-    /** The Complaint a completion with this key already moved on, as the Technician may still see it. */
-    public function completedWith(User $technician, int $complaintId, ?string $key): ?Complaint
+    /** The Complaint a completion with this key already moved on, as the Technician may still see it; null if none. */
+    public function findCompletedWith(User $technician, int $complaintId, ?string $key): ?Complaint
     {
         if ($key === null || ! $technician->technician) {
             return null;
         }
-        $done = MaintenanceRecord::query()->where('technician_id', $technician->technician->id)
+        $completed = MaintenanceRecord::query()->where('technician_id', $technician->technician->id)
             ->where('submission_key', $key)->where('complaint_id', $complaintId)->exists();
 
-        return $done ? Complaint::query()->visibleTo($technician)->find($complaintId) : null;
+        return $completed ? Complaint::query()->visibleTo($technician)->find($complaintId) : null;
     }
 
     /**

@@ -366,7 +366,10 @@ export interface TechnicianRecommendation {
     warnings: string[];
 }
 
-/** A report photo, served by GET /attachments/{id} to the reporter, Managers and Administrators. */
+/**
+ * A photo served by GET /attachments/{id}: report photos to everyone who sees the Complaint in full;
+ * Before and After photos to those who may see their Maintenance Record.
+ */
 export interface EvidencePhoto {
     id: number;
     type: 'report_photo' | 'before_photo' | 'after_photo';
@@ -416,7 +419,7 @@ export interface ComplaintDetail extends Complaint {
     /** Technicians only: theirs, and In Progress. */
     can_complete_work?: boolean;
     /** Every attempt the viewer may see, oldest first: staff get the full record, the reporter what was repaired. */
-    maintenance_records: (MaintenanceRecord | ReportedRepair)[];
+    maintenance_records: (MaintenanceRecord | MaintenanceRecordSummary)[];
     /** The office and the assigned Technician; only the office gets the email. */
     reporter?: { id: number; name: string; email?: string; unit: { id: number; code: string } | null };
 }
@@ -454,8 +457,8 @@ export interface TechnicianTask extends Complaint {
 /** GET /technician/tasks: New (Assigned), In progress, Returned and Completed. */
 export type TechnicianTaskGroups = Record<'new' | 'in_progress' | 'returned' | 'completed', TechnicianTask[]>;
 
-/** A Maintenance Record as the reporter sees it: what was repaired, and its photos. */
-export interface ReportedRepair {
+/** A Maintenance Record as the reporter sees it once the Complaint is Resolved: what was repaired, and its photos. */
+export interface MaintenanceRecordSummary {
     id: number;
     attempt: number;
     repair_result: string;
@@ -464,7 +467,7 @@ export interface ReportedRepair {
 }
 
 /** A Maintenance Record as staff see it: the office every one, a Technician their own. */
-export interface MaintenanceRecord extends ReportedRepair {
+export interface MaintenanceRecord extends MaintenanceRecordSummary {
     repair_cycle: number;
     technician: { id: number; name: string };
     parts_used: string | null;
@@ -475,6 +478,8 @@ export interface MaintenanceRecord extends ReportedRepair {
     verification_outcome: string | null;
 }
 
-export function isStaffRecord(record: MaintenanceRecord | ReportedRepair): record is MaintenanceRecord {
+export function isStaffRecord(record: MaintenanceRecord | MaintenanceRecordSummary): record is MaintenanceRecord {
     return 'technician' in record;
 }
+
+export const photoTypeLabel: Record<EvidencePhoto['type'], string> = { report_photo: 'Report', before_photo: 'Before', after_photo: 'After' };

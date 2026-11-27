@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Enums\Role;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -43,11 +44,24 @@ class MaintenanceRecord extends Model
         return $this->hasMany(Evidence::class)->orderBy('id');
     }
 
-    /** The sum of the expense lines in MYR, as a two-decimal string. */
+    /** The sum of the expense lines in MYR, as a two-decimal string; added in whole sen, never as floats. */
     public function expenseTotal(): string
     {
-        $cents = $this->expenses->sum(fn (Expense $expense) => (int) round((float) $expense->amount * 100));
+        $sen = $this->expenses->sum(fn (Expense $expense) => Expense::toSen($expense->amount));
 
-        return number_format($cents / 100, 2, '.', '');
+        return intdiv($sen, 100).'.'.str_pad((string) ($sen % 100), 2, '0', STR_PAD_LEFT);
+    }
+
+    /**
+     * Who may see this record, among those who see its Complaint in full: the office every one, a
+     * Technician their own, and the reporter once the Complaint has been Resolved (story 32).
+     */
+    public function isShownTo(User $viewer): bool
+    {
+        return match (true) {
+            $viewer->isOffice() => true,
+            $viewer->hasRole(Role::Technician) => $this->technician->isProfileOf($viewer),
+            default => $this->complaint->resolved_at !== null,
+        };
     }
 }

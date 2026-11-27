@@ -25,7 +25,7 @@ class ComplaintDetailResource extends ComplaintResource
     public const RELATIONS = ['location', 'category', 'statusHistory.actor', 'reporter.unit', 'evidence.uploader', 'comments.author.roles', 'repairCycles',
         'classificationChanges.actor', 'classificationChanges.fromCategory', 'classificationChanges.toCategory',
         'assignments.technician.user', 'assignments.assigner',
-        'maintenanceRecords.technician.user', 'maintenanceRecords.expenses', 'maintenanceRecords.photos', 'maintenanceRecords.repairCycle', 'evidence.maintenanceRecord.technician'];
+        'maintenanceRecords.technician.user', 'maintenanceRecords.expenses', 'maintenanceRecords.photos', 'maintenanceRecords.repairCycle', 'evidence.maintenanceRecord.technician', 'evidence.maintenanceRecord.complaint', 'maintenanceRecords.complaint'];
 
     public function toArray(Request $request): array
     {
@@ -87,12 +87,12 @@ class ComplaintDetailResource extends ComplaintResource
 
     /**
      * The office sees every Maintenance Record in full; a Technician their own, expenses included;
-     * the reporter only what was repaired and its photos (#29 visibility).
+     * the reporter, once it has been Resolved, only what was repaired and its photos (#29 visibility).
      */
     private function maintenanceRecordsFor(User $viewer): array
     {
         return $this->maintenanceRecords
-            ->filter(fn (MaintenanceRecord $record) => ! $viewer->hasRole(Role::Technician) || $record->technician->isProfileOf($viewer))
+            ->filter(fn (MaintenanceRecord $record) => $record->isShownTo($viewer))
             ->values()
             ->map(fn (MaintenanceRecord $record) => $viewer->isStaff() ? [
                 'id' => $record->id,

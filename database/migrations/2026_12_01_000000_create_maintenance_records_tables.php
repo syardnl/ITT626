@@ -33,13 +33,15 @@ return new class extends Migration
             $table->unique(['technician_id', 'submission_key']);
         });
 
-        // Expense lines: `amount` is the line's total in MYR, never a float.
+        // Source ERD: EXPENSE. `amount` is the line's total, a decimal, never a float; every amount is
+        // in ringgit today, and `currency` keeps that explicit.
         Schema::create('expenses', function (Blueprint $table) {
             $table->id();
             $table->foreignId('maintenance_record_id')->constrained()->restrictOnDelete();
             $table->string('description', 200);
             $table->decimal('quantity', 8, 2);
             $table->decimal('amount', 10, 2);
+            $table->char('currency', 3)->default('MYR');
             $table->timestamps();
         });
 

@@ -3,7 +3,6 @@
 namespace App\Models;
 
 use App\Enums\EvidenceType;
-use App\Enums\Role;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
@@ -29,13 +28,12 @@ class Evidence extends Model
     }
 
     /**
-     * Among those who see the Complaint in full: report photos go to all of them; a Technician sees
-     * Before and After photos only from their own Maintenance Records.
+     * Among those who see the Complaint in full: report photos go to all of them; Before and After
+     * photos to those who may see their Maintenance Record (MaintenanceRecord::isShownTo).
      */
     public function isShownTo(User $viewer): bool
     {
-        return $this->maintenance_record_id === null || ! $viewer->hasRole(Role::Technician)
-            || $this->maintenanceRecord->technician->isProfileOf($viewer);
+        return $this->maintenance_record_id === null || $this->maintenanceRecord->isShownTo($viewer);
     }
 
     public function complaint(): BelongsTo

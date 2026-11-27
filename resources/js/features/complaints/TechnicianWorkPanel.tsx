@@ -9,7 +9,7 @@ interface Props {
 }
 
 /** The assigned Technician's work: Start work (Assigned or Returned → In Progress), then the Complete work form. */
-export function StartWorkPanel({ complaint, onChanged }: Props) {
+export function TechnicianWorkPanel({ complaint, onChanged }: Props) {
     const [busy, setBusy] = useState(false);
     const [error, setError] = useState<ApiError | null>(null);
     if (!complaint.assigned_to_you) return null;

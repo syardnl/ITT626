@@ -2,6 +2,7 @@
 
 use App\Enums\ComplaintStatus;
 use App\Enums\Role;
+use App\Models\Complaint;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
 
@@ -80,6 +81,10 @@ it('validates expense lines', function () {
 
     completeWork($complaint, completionBody(['expenses' => [['description' => '', 'quantity' => 0, 'amount' => '12.345']]]))
         ->assertUnprocessable()->assertJsonValidationErrors(['expenses.0.description', 'expenses.0.quantity', 'expenses.0.amount']);
+    completeWork($complaint, completionBody(['expenses' => [['description' => 'Pipe', 'quantity' => '1.555', 'amount' => '3']]]))
+        ->assertUnprocessable()->assertJsonValidationErrors('expenses.0.quantity');
+    completeWork($complaint, completionBody(['expenses' => [['description' => '', 'quantity' => 0, 'amount' => '12.345']]]))
+        ->assertUnprocessable()->assertJsonValidationErrors(['expenses.0.description', 'expenses.0.quantity', 'expenses.0.amount']);
 });
 
 it('numbers each completion as a new attempt and keeps the earlier records', function () {
@@ -147,17 +152,50 @@ it('conceals the Complaint from other Technicians and refuses other roles', func
     }
 });
 
-it('shows the office every record with expenses, and the reporter only the result', function () {
+it('shows the office every record with expenses, and the reporter only the result once Resolved', function () {
     ['complaint' => $complaint, 'manager' => $manager, 'rina' => $rina] = inProgressSetup();
-    completeWork($complaint, completionBody(['parts_used' => 'Sensor', 'notes' => 'Corroded.', 'expenses' => [['description' => 'Sensor', 'quantity' => 1, 'amount' => '185.50']]]))->assertOk();
+    $data = completeWork($complaint, completionBody(['parts_used' => 'Sensor', 'notes' => 'Corroded.', 'expenses' => [['description' => 'Sensor', 'quantity' => 1, 'amount' => '185.50']]]))
+        ->assertOk()->json('data');
+    $afterPhoto = collect($data['evidence'])->firstWhere('type', 'after_photo');
 
     $this->actingAs($manager);
     expect($this->getJson("/api/v1/complaints/{$complaint}")->json('data.maintenance_records.0'))
         ->toHaveKeys(['expenses', 'expense_total', 'parts_used', 'notes', 'technician']);
 
     $this->actingAs($rina);
+    expect($this->getJson("/api/v1/complaints/{$complaint}")->json('data.maintenance_records'))->toBe([]);
+    $this->get($afterPhoto['url'])->assertNotFound();
+
+    // No endpoint approves work until the verification ticket, so Resolved is set directly.
+    Complaint::findOrFail($complaint)->forceFill(['status' => ComplaintStatus::Resolved, 'resolved_at' => now()])->save();
     $record = $this->getJson("/api/v1/complaints/{$complaint}")->assertOk()->json('data.maintenance_records.0');
     expect(array_keys($record))->toEqualCanonicalizing(['id', 'attempt', 'repair_result', 'submitted_at', 'photo_ids']);
+    $this->get($afterPhoto['url'])->assertOk();
+});
+
+it('keeps another Technician from opening Before and After photos', function () {
+    ['complaint' => $complaint, 'manager' => $manager, 'tariq' => $tariq, 'una' => $una] = inProgressSetup();
+    $url = collect(completeWork($complaint, completionBody())->json('data.evidence'))->firstWhere('type', 'after_photo')['url'];
+    forceStatus($complaint, ComplaintStatus::Returned);   // no Manager Rejection endpoint until the verification ticket
+    $this->actingAs($manager);
+    assign($complaint, ['technician_id' => $una['id'], 'reason' => 'Tariq is off sick.'])->assertOk();
+
+    $this->actingAs($una['user']);
+    $this->get($url)->assertNotFound();
+    expect(collect($this->getJson("/api/v1/complaints/{$complaint}")->json('data.evidence'))->where('type', 'after_photo'))->toBeEmpty();
+});
+
+it('refuses an Idempotency-Key already used on another Complaint', function () {
+    ['complaint' => $complaint, 'tariq' => $tariq, 'manager' => $manager] = $setup = inProgressSetup();
+    $key = ['Idempotency-Key' => 'complete-0123456789abcdef'];
+    completeWork($complaint, completionBody(), $key)->assertOk();
+    $this->actingAs($manager);
+    $other = classifiedComplaint($setup);
+    assign($other, ['technician_id' => $tariq['id']])->assertOk();
+    $this->actingAs($tariq['user']);
+    startWork($other)->assertOk();
+
+    completeWork($other, completionBody(), $key)->assertUnprocessable()->assertJsonValidationErrors('idempotency_key');
 });
 
 it('shows a Technician only their own records after a reassignment', function () {

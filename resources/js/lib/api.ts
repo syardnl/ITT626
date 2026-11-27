@@ -405,8 +405,12 @@ export interface ComplaintDetail extends Complaint {
     repair_cycles?: { number: number; started_at: string }[];
     /** Office only: whose work it is now; null before the first Assignment. */
     assignment?: CurrentAssignment | null;
-    /** Present for the office (Manager, Administrator) only. */
-    reporter?: { id: number; name: string; email: string; unit: { id: number; code: string } | null };
+    /** When the Technician first started the work; null until then. */
+    started_at: string | null;
+    /** Technicians only: whether they hold the current Assignment, so may start work and comment. */
+    assigned_to_you?: boolean;
+    /** The office and the assigned Technician; only the office gets the email. */
+    reporter?: { id: number; name: string; email?: string; unit: { id: number; code: string } | null };
 }
 
 /** A Complaint's Category name, or how to say it has none yet. */
@@ -433,3 +437,11 @@ export async function setFollowing(complaintId: number, follow: boolean): Promis
 export function newSubmissionKey(): string {
     return Array.from(crypto.getRandomValues(new Uint8Array(16)), (byte) => byte.toString(16).padStart(2, '0')).join('');
 }
+
+/** One of a Technician's Complaints on their task list. */
+export interface TechnicianTask extends Complaint {
+    assigned_at: string;
+}
+
+/** GET /technician/tasks: New (Assigned), In progress, Returned and Completed. */
+export type TechnicianTaskGroups = Record<'new' | 'in_progress' | 'returned' | 'completed', TechnicianTask[]>;

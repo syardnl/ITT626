@@ -7,6 +7,7 @@ use App\Http\Requests\Complaints\AssignTechnicianRequest;
 use App\Http\Requests\Complaints\ClassifyComplaintRequest;
 use App\Http\Requests\Complaints\RecommendTechniciansRequest;
 use App\Http\Requests\Complaints\ReviewComplaintRequest;
+use App\Http\Requests\Complaints\StartWorkRequest;
 use App\Http\Resources\ComplaintDetailResource;
 use App\Http\Resources\RecommendationEntry;
 use App\Models\Category;
@@ -51,6 +52,11 @@ class ComplaintWorkflowController extends Controller
     public function assign(AssignTechnicianRequest $request, int $complaint): ComplaintDetailResource
     {
         return $this->detail($this->workflow->assign($request->user(), $complaint, $request->details(), $request->version()));
+    }
+
+    public function startWork(StartWorkRequest $request, int $complaint): ComplaintDetailResource
+    {
+        return $this->detail($this->workflow->startWork($request->user(), $complaint, $request->version()));
     }
 
     private function detail(Complaint $complaint): ComplaintDetailResource

@@ -2,6 +2,7 @@
 
 namespace App\Http\Resources;
 
+use App\Enums\Role;
 use App\Models\Assignment;
 use App\Models\ClassificationChange;
 use App\Models\Comment;
@@ -32,10 +33,11 @@ class ComplaintDetailResource extends ComplaintResource
                 'name' => $this->category->name,
                 ...($request->user()->isOffice() ? ['default_priority' => $this->category->default_priority->value] : []),
             ] : null,
-            'reporter' => $this->when($request->user()->isOffice(), fn () => [
+            // The office and the Technician; only the office sees the email.
+            'reporter' => $this->when($request->user()->isOffice() || $request->user()->hasRole(Role::Technician), fn () => [
                 'id' => $this->reporter->id,
                 'name' => $this->reporter->name,
-                'email' => $this->reporter->email,
+                ...($request->user()->isOffice() ? ['email' => $this->reporter->email] : []),
                 'unit' => $this->reporter->unit ? ['id' => $this->reporter->unit->id, 'code' => $this->reporter->unit->code] : null,
             ]),
             'description' => $this->description,
@@ -65,6 +67,10 @@ class ComplaintDetailResource extends ComplaintResource
             ])->all()),
             // The office sees whose work it is now; Technicians see their own from the next ticket on.
             'assignment' => $this->when($request->user()->isOffice(), fn () => $this->currentAssignmentEntry()),
+            // When the Technician first started the latest Assignment's work.
+            'started_at' => $this->assignments->last()?->started_at?->utc()->format('Y-m-d\TH:i:s\Z'),
+            // A Technician's own Complaint: they may start work and comment while it is theirs.
+            'assigned_to_you' => $this->when($request->user()->hasRole(Role::Technician), fn () => $this->isAssignedTo($request->user())),
             'timeline' => $this->timelineFor($request->user()),
         ];
     }

@@ -56,7 +56,7 @@ it('refuses an Internal Comment from the reporter', function () {
     ['complaint' => $complaint] = commentsSetup();
 
     postComment($complaint['id'], ['body' => 'Just for staff', 'visibility' => 'internal'])
-        ->assertUnprocessable()->assertJsonValidationErrors(['visibility' => 'Only the management office can post Internal Comments.']);
+        ->assertUnprocessable()->assertJsonValidationErrors(['visibility' => 'Only staff can post Internal Comments.']);
 });
 
 it('rejects an unknown visibility', function () {
@@ -99,12 +99,19 @@ it('conceals the Complaint from other Residents trying to comment', function () 
     postComment(999999, ['body' => 'Hello'])->assertNotFound();
 });
 
-it('lets Administrators and Technicians post no comments', function (Role $role) {
+it('lets Administrators post no comments', function () {
     ['complaint' => $complaint] = commentsSetup();
-    $this->actingAs(account($role));
+    $this->actingAs(account(Role::Administrator));
 
     postComment($complaint['id'], ['body' => 'Hello'])->assertForbidden();
-})->with([Role::Administrator, Role::Technician]);
+});
+
+it('conceals the Complaint from a Technician it is not assigned to', function () {
+    ['complaint' => $complaint] = commentsSetup();
+    $this->actingAs(account(Role::Technician));
+
+    postComment($complaint['id'], ['body' => 'Hello'])->assertNotFound();
+});
 
 it('needs a comment of 1 to 2000 characters', function (array $body) {
     ['complaint' => $complaint] = commentsSetup();

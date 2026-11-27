@@ -144,7 +144,7 @@ class Complaint extends Model
 
     /**
      * The Complaints this account may open: a Resident their own and those they follow, the
-     * office (Manager, Administrator) every one, a Technician none until Assignment exists.
+     * office (Manager, Administrator) every one, a Technician those whose latest Assignment is theirs.
      * Every read goes through here, so anything outside it is concealed as not found.
      */
     public function scopeVisibleTo(Builder $query, User $viewer): void
@@ -157,8 +157,27 @@ class Complaint extends Model
                     'location_id', Location::query()->where('type', LocationType::CommonArea)->select('id'),
                 ))),
             $viewer->isOffice() => $query,   // no restriction
+            $viewer->hasRole(Role::Technician) && $viewer->technician => $query->latestAssignmentHeldBy($viewer->technician->id),
             default => $query->whereRaw('1 = 0'),
         };
+    }
+
+    /**
+     * The Technician's latest Assignment: their current one, or one ended only by Closure. An
+     * Assignment ended by reassignment is not the latest, so the work has moved to someone else.
+     */
+    public function scopeLatestAssignmentHeldBy(Builder $query, int $technicianId): void
+    {
+        $query->whereExists(fn ($latest) => $latest->from('complaint_assignments as latest')
+            ->whereColumn('latest.complaint_id', 'complaints.id')
+            ->where('latest.technician_id', $technicianId)
+            ->whereRaw('latest.id = (SELECT MAX(a.id) FROM complaint_assignments a WHERE a.complaint_id = complaints.id)'));
+    }
+
+    /** Whether this account is the Technician holding the current Assignment: the one who may act on it. */
+    public function isAssignedTo(User $user): bool
+    {
+        return $user->hasRole(Role::Technician) && $this->currentAssignment?->technician?->isProfileOf($user) === true;
     }
 
     public function isReportedBy(User $user): bool
@@ -166,9 +185,12 @@ class Complaint extends Model
         return $this->reporter_id === $user->id;
     }
 
-    /** The reporter and the office see everything visibleTo lets them open; a Follower sees only the summary. */
+    /**
+     * The reporter, the office and the Technician see everything visibleTo lets them open (a
+     * Technician only reaches their own); a Follower sees only the summary.
+     */
     public function isSeenInFullBy(User $viewer): bool
     {
-        return $this->isReportedBy($viewer) || $viewer->isOffice();
+        return $this->isReportedBy($viewer) || $viewer->isOffice() || $viewer->hasRole(Role::Technician);
     }
 }

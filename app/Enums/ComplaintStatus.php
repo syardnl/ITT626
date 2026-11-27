@@ -29,6 +29,9 @@ enum ComplaintStatus: string
     /** Where a Manager may assign: Under Review for the first Assignment, or reassign. */
     public const array ASSIGNABLE = [self::UnderReview, ...self::REASSIGNABLE];
 
+    /** Where the assigned Technician may start work: new, or sent back to them. */
+    public const array STARTABLE = [self::Assigned, self::Returned];
+
     /** Open means anything not Resolved or Closed. */
     public function isOpen(): bool
     {

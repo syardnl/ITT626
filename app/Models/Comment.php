@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Enums\CommentVisibility;
+use App\Enums\Role;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
@@ -30,9 +31,12 @@ class Comment extends Model
         return $this->belongsTo(User::class, 'author_id');
     }
 
-    /** Internal Comments: Managers, and Administrators read-only (Phase 3 adds the assigned Technician). Followers never reach a timeline. */
+    /**
+     * Internal Comments are for staff: Managers, Administrators read-only, and the Technician, who
+     * only ever opens Complaints assigned to them (Complaint::visibleTo). Followers never reach a timeline.
+     */
     public function isVisibleTo(User $viewer): bool
     {
-        return $this->visibility === CommentVisibility::Public || $viewer->isOffice();
+        return $this->visibility === CommentVisibility::Public || $viewer->isOffice() || $viewer->hasRole(Role::Technician);
     }
 }

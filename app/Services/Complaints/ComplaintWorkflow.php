@@ -107,6 +107,24 @@ class ComplaintWorkflow
     }
 
     /**
+     * Assigned or Returned → In Progress, by the Technician holding the current Assignment. The
+     * Assignment keeps the first start time; starting again after a return does not move it.
+     */
+    public function startWork(User $technician, int $complaintId, ?int $version): Complaint
+    {
+        return $this->act($technician, $complaintId, $version, ComplaintStatus::STARTABLE, function (Complaint $complaint) use ($technician) {
+            $assignment = $complaint->currentAssignment()->with('technician')->first();
+            if (! $assignment || ! $assignment->technician->isProfileOf($technician)) {
+                throw new WorkflowConflict('This Complaint is no longer assigned to you. Reload it to see the latest.');
+            }
+            $assignment->started_at ??= now();
+            $assignment->save();
+            $this->moveTo($complaint, ComplaintStatus::InProgress, $technician);
+            $this->audit->recordChange(AuditAction::WorkStarted, $complaint);
+        });
+    }
+
+    /**
      * Why a Technician cannot yet be recommended or assigned for this Complaint, or null when one can;
      * shared with the requests' early check.
      */

@@ -47,6 +47,7 @@ export const router = createBrowserRouter([
     ] },
     { path: '/technician', element: <RoleShell role="technician" />, children: [
         { index: true, element: <TechnicianLandingPage /> },
+        { path: 'complaints/:id', element: <ComplaintDetailPage /> },
         { path: 'profile', element: <MyProfilePage /> },
     ] },
     { path: '/admin', element: <RoleShell role="administrator" />, children: [

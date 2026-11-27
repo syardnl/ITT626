@@ -10,8 +10,8 @@ import {
 interface Props {
     complaintId: number;
     timeline: TimelineEntry[];
-    /** Who may add a comment here: the reporter (Public only), a Manager (Public or Internal), or nobody. */
-    commenting: 'reporter' | 'manager' | null;
+    /** Who may add a comment here: the reporter (Public only), staff (a Manager or the assigned Technician: Public or Internal), or nobody. */
+    commenting: 'reporter' | 'staff' | null;
     onCommented: (entry: CommentTimelineEntry) => void;
 }
 
@@ -63,7 +63,7 @@ export function ComplaintTimeline({ complaintId, timeline, commenting, onComment
                     </li>
                 ))}
             </ol>
-            {commenting && <CommentBox complaintId={complaintId} canPostInternal={commenting === 'manager'} onCommented={onCommented} />}
+            {commenting && <CommentBox complaintId={complaintId} canPostInternal={commenting === 'staff'} onCommented={onCommented} />}
         </section>
     );
 }

@@ -168,3 +168,23 @@ function timelineOf(int $complaintId, string $type): array
 
     return array_values(array_filter($timeline, fn (array $entry) => $entry['type'] === $type));
 }
+
+/**
+ * assignmentSetup() with the Complaint assigned to Tariq (Lift Skill, home Block A), who is then
+ * signed in. Una is another Lift Technician with no work.
+ */
+function technicianWorkSetup(): array
+{
+    $setup = assignmentSetup();
+    $tariq = technicianProfile('Tariq Technician', $setup['block']->id);
+    $una = technicianProfile('Una Other', $setup['block']->id);
+    assign($setup['complaint'], ['technician_id' => $tariq['id'], 'note' => 'Key is at the guard house.'])->assertOk();
+    test()->actingAs($tariq['user']);
+
+    return [...$setup, 'tariq' => $tariq, 'una' => $una];
+}
+
+function startWork(int $complaintId, ?int $version = null)
+{
+    return test()->postJson("/api/v1/complaints/{$complaintId}/start-work", ['version' => $version ?? loadedVersion($complaintId)]);
+}

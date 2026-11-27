@@ -44,7 +44,8 @@ class ConfirmResolutionRequest extends FormRequest
         return [
             'decision' => ['required', Rule::enum(ResidentDecision::class)],
             // A confirmation keeps a Rating and feedback; a return keeps its reason. The other side's fields are ignored.
-            'rating' => ['exclude_unless:decision,confirm', 'nullable', 'integer', 'between:1,5'],
+            // Feedback belongs to a Rating, so it needs a score: it would otherwise have nowhere to be kept.
+            'rating' => ['exclude_unless:decision,confirm', 'nullable', 'required_with:feedback', 'integer', 'between:1,5'],
             'feedback' => ['exclude_unless:decision,confirm', 'nullable', 'string', 'max:1000'],
             'reason' => ['exclude_unless:decision,return', 'required', 'string', 'max:1000'],
             'version' => ['required', 'integer'],
@@ -56,6 +57,7 @@ class ConfirmResolutionRequest extends FormRequest
         return [
             'reason.required' => 'Tell us what is still wrong, so the Technician can look again.',
             'rating.between' => 'Choose a rating from 1 to 5.',
+            'rating.required_with' => 'Choose a rating from 1 to 5 to send feedback with it.',
         ];
     }
 

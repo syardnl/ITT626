@@ -9,4 +9,4 @@ Artisan::command('inspire', function () {
 })->purpose('Display an inspiring quote');
 
 // Automatic Closure (story 36). Run the scheduler with `php artisan schedule:work` (development) or a cron entry for `schedule:run`.
-Schedule::command('complaints:close-resolved')->hourly()->withoutOverlapping();
+Schedule::command('complaints:close-resolved')->hourly()->withoutOverlapping(10);   // a run killed mid-way blocks the next ones for 10 minutes, not a day

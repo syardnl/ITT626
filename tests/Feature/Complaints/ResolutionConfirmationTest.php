@@ -56,6 +56,7 @@ it('needs a whole-number Rating from 1 to 5 and feedback of at most 1000 charact
     'six' => [['rating' => 6], 'rating'],
     'a fraction' => [['rating' => 3.5], 'rating'],
     'long feedback' => [['rating' => 5, 'feedback' => str_repeat('a', 1001)], 'feedback'],
+    'feedback without a Rating' => [['feedback' => 'Left a mess in the hallway.'], 'rating'],
     'no decision' => [['decision' => null], 'decision'],
     'unknown decision' => [['decision' => 'maybe'], 'decision'],
 ]);

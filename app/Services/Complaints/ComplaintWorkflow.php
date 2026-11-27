@@ -263,7 +263,7 @@ class ComplaintWorkflow
         });
     }
 
-    /** Full calendar days a Complaint stays Resolved before Automatic Closure. */
+    /** Days (of calendar time, so 168 hours for 7) a Complaint stays Resolved before Automatic Closure. */
     public const AUTOMATIC_CLOSURE_DAYS = 7;
 
     /** Why the reporter cannot answer this Complaint now, or null when they can; shared with ConfirmResolutionRequest's early check. */

@@ -36,7 +36,7 @@ export function ConfirmResolutionPanel({ complaint, onChanged }: Props) {
         try {
             await ensureCsrfCookie();
             const body = decision === 'confirm'
-                ? { decision, rating: score, feedback: feedback || null, version: complaint.version }
+                ? { decision, rating: score, feedback: score !== null && feedback ? feedback : null, version: complaint.version }
                 : { decision, reason, version: complaint.version };
             const response = await api.post<{ data: ComplaintDetail }>(`/complaints/${complaint.id}/confirm-resolution`, body);
             onChanged(response.data.data);
@@ -97,7 +97,7 @@ export function ConfirmResolutionPanel({ complaint, onChanged }: Props) {
                         <button type="submit" disabled={busy} className="min-h-11 rounded-md bg-amber-700 px-5 font-medium text-white hover:bg-amber-800 focus:outline-2 focus:outline-offset-2 focus:outline-amber-600 disabled:opacity-60">
                             {busy ? 'Sending…' : 'Send it back'}
                         </button>
-                        <button type="button" onClick={() => { setReturning(false); setError(null); }} className="min-h-11 rounded-md border border-slate-300 bg-white px-4 font-medium hover:bg-slate-50 focus:outline-2 focus:outline-offset-2 focus:outline-blue-600">
+                        <button type="button" onClick={() => { setReturning(false); setError(null); }} disabled={busy} className="min-h-11 rounded-md border border-slate-300 bg-white px-4 font-medium hover:bg-slate-50 focus:outline-2 focus:outline-offset-2 focus:outline-blue-600 disabled:opacity-60">
                             Cancel
                         </button>
                     </div>
@@ -120,7 +120,8 @@ export function ConfirmResolutionPanel({ complaint, onChanged }: Props) {
                         <p className="mt-1 text-sm text-slate-600">1 is poor, 5 is excellent. The management office sees your rating; the Technician does not.</p>
                         {fieldError('rating') && <p className="text-sm text-red-700">{fieldError('rating')}</p>}
                     </fieldset>
-                    <div className="space-y-1">
+                    {/* Feedback is kept with the Rating, so it is offered once a score is chosen. */}
+                    {score !== null && <div className="space-y-1">
                         <label htmlFor="rating-feedback" className="block text-sm font-medium">Anything to add? (optional)</label>
                         <textarea
                             id="rating-feedback" rows={2} value={feedback} onChange={(e) => setFeedback(e.target.value)} maxLength={1000}
@@ -128,7 +129,7 @@ export function ConfirmResolutionPanel({ complaint, onChanged }: Props) {
                             className={`${inputClassName} py-2`}
                         />
                         {fieldError('feedback') && <p className="text-sm text-red-700">{fieldError('feedback')}</p>}
-                    </div>
+                    </div>}
                     <div className="flex flex-wrap gap-3">
                         <button type="submit" disabled={busy} className="min-h-11 rounded-md bg-green-700 px-5 font-medium text-white hover:bg-green-800 focus:outline-2 focus:outline-offset-2 focus:outline-green-600 disabled:opacity-60">
                             {busy ? 'Confirming…' : 'Yes, it is fixed'}

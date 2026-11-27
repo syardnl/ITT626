@@ -25,7 +25,7 @@ class ComplaintDetailResource extends ComplaintResource
     public const RELATIONS = ['location', 'category', 'statusHistory.actor', 'reporter.unit', 'evidence.uploader', 'comments.author.roles', 'repairCycles',
         'classificationChanges.actor', 'classificationChanges.fromCategory', 'classificationChanges.toCategory',
         'assignments.technician.user', 'assignments.assigner',
-        'maintenanceRecords.technician.user', 'maintenanceRecords.expenses', 'maintenanceRecords.photos', 'maintenanceRecords.repairCycle', 'evidence.maintenanceRecord.technician', 'evidence.maintenanceRecord.complaint', 'maintenanceRecords.complaint'];
+        'maintenanceRecords.technician.user', 'maintenanceRecords.expenses', 'maintenanceRecords.photos', 'maintenanceRecords.repairCycle', 'evidence.maintenanceRecord.technician'];
 
     public function toArray(Request $request): array
     {
@@ -87,7 +87,7 @@ class ComplaintDetailResource extends ComplaintResource
 
     /**
      * The office sees every Maintenance Record in full; a Technician their own, expenses included;
-     * the reporter, once it has been Resolved, only what was repaired and its photos (#29 visibility).
+     * the reporter, once approved, only what was repaired and its photos (#29 visibility).
      */
     private function maintenanceRecordsFor(User $viewer): array
     {

@@ -132,8 +132,8 @@ class ComplaintWorkflow
     /**
      * In Progress → Pending Verification, by the assigned Technician: one new Maintenance Record
      * (the next attempt, in the current Repair Cycle) with its expense lines and tagged photos.
-     * Photos are re-encoded before the transaction; a retry with the same key returns the Complaint
-     * as the first attempt left it.
+     * Photos are re-encoded before the transaction; a retry with the same key creates nothing and
+     * returns the Complaint as it is now.
      *
      * @throws ValidationException when a photo cannot be used; nothing is saved
      */

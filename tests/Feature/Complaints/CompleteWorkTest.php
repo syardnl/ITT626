@@ -3,6 +3,7 @@
 use App\Enums\ComplaintStatus;
 use App\Enums\Role;
 use App\Models\Complaint;
+use App\Models\MaintenanceRecord;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
 
@@ -83,8 +84,17 @@ it('validates expense lines', function () {
         ->assertUnprocessable()->assertJsonValidationErrors(['expenses.0.description', 'expenses.0.quantity', 'expenses.0.amount']);
     completeWork($complaint, completionBody(['expenses' => [['description' => 'Pipe', 'quantity' => '1.555', 'amount' => '3']]]))
         ->assertUnprocessable()->assertJsonValidationErrors('expenses.0.quantity');
-    completeWork($complaint, completionBody(['expenses' => [['description' => '', 'quantity' => 0, 'amount' => '12.345']]]))
-        ->assertUnprocessable()->assertJsonValidationErrors(['expenses.0.description', 'expenses.0.quantity', 'expenses.0.amount']);
+    completeWork($complaint, completionBody(['expenses' => [['description' => 'Refund', 'quantity' => 1, 'amount' => '-5.00']]]))
+        ->assertUnprocessable()->assertJsonValidationErrors('expenses.0.amount');
+    completeWork($complaint, completionBody(['expenses' => array_fill(0, 21, ['description' => 'Screw', 'quantity' => 1, 'amount' => '0.10'])]))
+        ->assertUnprocessable()->assertJsonValidationErrors('expenses');
+});
+
+it('reports a bad photo tag without also claiming the After photo is missing', function () {
+    ['complaint' => $complaint] = inProgressSetup();
+
+    completeWork($complaint, completionBody(['photo_tags' => ['during']]))->assertUnprocessable()
+        ->assertJsonValidationErrors('photo_tags.0')->assertJsonMissingValidationErrors('photos');
 });
 
 it('numbers each completion as a new attempt and keeps the earlier records', function () {
@@ -152,7 +162,7 @@ it('conceals the Complaint from other Technicians and refuses other roles', func
     }
 });
 
-it('shows the office every record with expenses, and the reporter only the result once Resolved', function () {
+it('shows the office every record with expenses, and the reporter only an approved record’s result', function () {
     ['complaint' => $complaint, 'manager' => $manager, 'rina' => $rina] = inProgressSetup();
     $data = completeWork($complaint, completionBody(['parts_used' => 'Sensor', 'notes' => 'Corroded.', 'expenses' => [['description' => 'Sensor', 'quantity' => 1, 'amount' => '185.50']]]))
         ->assertOk()->json('data');
@@ -166,8 +176,11 @@ it('shows the office every record with expenses, and the reporter only the resul
     expect($this->getJson("/api/v1/complaints/{$complaint}")->json('data.maintenance_records'))->toBe([]);
     $this->get($afterPhoto['url'])->assertNotFound();
 
-    // No endpoint approves work until the verification ticket, so Resolved is set directly.
+    // Resolved alone is not enough: only the approved record shows.
     Complaint::findOrFail($complaint)->forceFill(['status' => ComplaintStatus::Resolved, 'resolved_at' => now()])->save();
+    expect($this->getJson("/api/v1/complaints/{$complaint}")->json('data.maintenance_records'))->toBe([]);
+    // No endpoint approves work until the verification ticket, so the outcome is set directly.
+    MaintenanceRecord::findOrFail($data['maintenance_records'][0]['id'])->forceFill(['verification_outcome' => MaintenanceRecord::APPROVED])->save();
     $record = $this->getJson("/api/v1/complaints/{$complaint}")->assertOk()->json('data.maintenance_records.0');
     expect(array_keys($record))->toEqualCanonicalizing(['id', 'attempt', 'repair_result', 'submitted_at', 'photo_ids']);
     $this->get($afterPhoto['url'])->assertOk();

@@ -52,16 +52,20 @@ class MaintenanceRecord extends Model
         return intdiv($sen, 100).'.'.str_pad((string) ($sen % 100), 2, '0', STR_PAD_LEFT);
     }
 
+    /** verification_outcome once a Manager approves the work (the verification ticket sets it). */
+    public const APPROVED = 'approved';
+
     /**
      * Who may see this record, among those who see its Complaint in full: the office every one, a
-     * Technician their own, and the reporter once the Complaint has been Resolved (story 32).
+     * Technician their own, and the reporter only an approved one (story 32: the repair that
+     * resolved it), never one waiting for verification or sent back.
      */
     public function isShownTo(User $viewer): bool
     {
         return match (true) {
             $viewer->isOffice() => true,
             $viewer->hasRole(Role::Technician) => $this->technician->isProfileOf($viewer),
-            default => $this->complaint->resolved_at !== null,
+            default => $this->verification_outcome === self::APPROVED,
         };
     }
 }

@@ -69,7 +69,7 @@ class CompleteWorkRequest extends FormRequest
     public function after(): array
     {
         return [function (Validator $validator) {
-            if ($validator->errors()->hasAny(['photos', 'photo_tags'])) {
+            if ($validator->errors()->hasAny(['photos', 'photos.*', 'photo_tags', 'photo_tags.*'])) {
                 return;
             }
             $tags = (array) $this->input('photo_tags', []);

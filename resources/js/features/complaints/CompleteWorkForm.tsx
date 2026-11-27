@@ -24,12 +24,15 @@ export function CompleteWorkForm({ complaint, onCompleted }: Props) {
     const [busy, setBusy] = useState(false);
     const [error, setError] = useState<ApiError | null>(null);
     // One key per form: a retry after a dropped connection cannot create a second record.
-    const [submissionKey] = useState(newSubmissionKey);
+    const [submissionKey, setSubmissionKey] = useState(newSubmissionKey);
 
     const tagOf = (photo: File): Tag => tags.get(photo) ?? 'after';
     const fieldError = (field: string) => error?.errors[field]?.[0];
     const firstError = (prefix: string) => Object.entries(error?.errors ?? {}).find(([field]) => field === prefix || field.startsWith(`${prefix}.`))?.[1][0];
-    const hasFieldErrors = !!error && Object.keys(error.errors).length > 0;
+    // Fields this form marks inline; any other 422 (such as a reused Idempotency-Key) is shown in the alert.
+    const inlinePrefixes = ['repair_result', 'photos', 'photo_tags', 'parts_used', 'notes', 'expenses'];
+    const marksInline = !!error && Object.keys(error.errors).some((field) => inlinePrefixes.some((prefix) => field === prefix || field.startsWith(`${prefix}.`)));
+    const otherError = error && !marksInline ? Object.values(error.errors)[0]?.[0] ?? error.message : null;
 
     function updateLine(index: number, change: Partial<ExpenseLine>) {
         setExpenses(expenses.map((line, other) => (other === index ? { ...line, ...change } : line)));
@@ -60,7 +63,10 @@ export function CompleteWorkForm({ complaint, onCompleted }: Props) {
             });
             onCompleted(response.data.data);
         } catch (caught) {
-            setError(toApiError(caught));
+            const apiError = toApiError(caught);
+            setError(apiError);
+            // A key the server will not take again: the next try gets a fresh one.
+            if (apiError.errors.idempotency_key) setSubmissionKey(newSubmissionKey());
         } finally {
             setBusy(false);
         }
@@ -71,8 +77,8 @@ export function CompleteWorkForm({ complaint, onCompleted }: Props) {
             <h3 className="text-base font-semibold">Complete work</h3>
             {error && (
                 <Alert kind="error">
-                    {hasFieldErrors ? 'Please check the answers marked below.' : error.message}
-                    {error.status === 409 && ' Reload the page to see the latest.'}
+                    {marksInline ? 'Please check the answers marked below.' : otherError}
+                    {[403, 404, 409].includes(error.status) && ' Reload the page to see the latest.'}
                 </Alert>
             )}
 
@@ -135,7 +141,7 @@ export function CompleteWorkForm({ complaint, onCompleted }: Props) {
                         {[fieldError(`expenses.${index}.quantity`), fieldError(`expenses.${index}.amount`)].filter(Boolean).map((message) => (
                             <p key={message} className="text-sm text-red-700">{message}</p>
                         ))}
-                        <button type="button" onClick={() => setExpenses(expenses.filter((_, other) => other !== index))} className="min-h-11 text-sm text-red-700 underline">
+                        <button type="button" onClick={() => { setExpenses(expenses.filter((_, other) => other !== index)); setError(null); }} className="min-h-11 text-sm text-red-700 underline">
                             Remove this line
                         </button>
                     </div>

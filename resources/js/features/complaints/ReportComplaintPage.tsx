@@ -1,4 +1,4 @@
-import { useEffect, useState, type FormEvent } from 'react';
+import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { useNavigate } from 'react-router';
 import { Alert } from '../../components/Alert';
 import { SubmitButton } from '../../components/SubmitButton';
@@ -49,6 +49,11 @@ export function ReportComplaintPage() {
     const [busy, setBusy] = useState(false);
     const [error, setError] = useState<ApiError | null>(null);
     const [loadError, setLoadError] = useState<string | null>(null);
+    // On a phone the summary is a long scroll above the Submit button: move focus (and the view) to it.
+    const summaryRef = useRef<HTMLDivElement>(null);
+    useEffect(() => {
+        if (error) summaryRef.current?.focus();
+    }, [error]);
 
     useEffect(() => {
         api.get<{ data: Category[] }>('/categories')
@@ -112,18 +117,23 @@ export function ReportComplaintPage() {
 
             <form onSubmit={submit} noValidate className="mt-6 space-y-6">
                 {loadError && <Alert kind="error">{loadError}</Alert>}
-                {error && <Alert kind="error">{Object.keys(error.errors).length ? 'Please check the answers marked below.' : error.message}</Alert>}
+                {error && (
+                    <div ref={summaryRef} tabIndex={-1} className="scroll-mt-4 focus:outline-none">
+                        <Alert kind="error">{Object.keys(error.errors).length ? 'Please check the answers marked below.' : error.message}</Alert>
+                    </div>
+                )}
+                <p className="text-sm text-slate-600">Fields marked <span aria-hidden="true">*</span><span className="sr-only">required</span> are required.</p>
 
                 <fieldset className="space-y-2" aria-describedby={fieldError('my_unit') ? 'my-unit-error' : undefined}>
-                    <legend className="text-sm font-medium">Where is the problem?</legend>
+                    <legend className="text-sm font-medium">Where is the problem? <Required /></legend>
                     {account?.unit && (
                         <label className="flex min-h-11 items-center gap-3">
-                            <input type="radio" name="place" checked={place === 'my_unit'} onChange={() => setPlace('my_unit')} />
+                            <input type="radio" className="size-5 shrink-0" name="place" checked={place === 'my_unit'} onChange={() => setPlace('my_unit')} />
                             My unit ({account.unit.code})
                         </label>
                     )}
                     <label className="flex min-h-11 items-center gap-3">
-                        <input type="radio" name="place" checked={place === 'common_area'} onChange={() => setPlace('common_area')} />
+                        <input type="radio" className="size-5 shrink-0" name="place" checked={place === 'common_area'} onChange={() => setPlace('common_area')} />
                         A Common Area (lift, corridor, pool…)
                     </label>
                     {fieldError('my_unit') && <p id="my-unit-error" className="text-sm text-red-700">{fieldError('my_unit')}</p>}
@@ -136,9 +146,9 @@ export function ReportComplaintPage() {
                             onChange={(e) => setAreaSearch(e.target.value)} hint="For example: lift, pool, B-02"
                         />
                         <div className="space-y-1">
-                            <label htmlFor="location" className="block text-sm font-medium">Common Area</label>
+                            <label htmlFor="location" className="block text-sm font-medium">Common Area <Required /></label>
                             <select
-                                id="location" value={locationId} onChange={(e) => setLocationId(e.target.value)}
+                                id="location" aria-required="true" value={locationId} onChange={(e) => setLocationId(e.target.value)}
                                 aria-invalid={fieldError('location_id') ? true : undefined}
                                 aria-describedby={fieldError('location_id') ? 'location-error' : undefined}
                                 className={inputClassName}
@@ -153,14 +163,14 @@ export function ReportComplaintPage() {
                 )}
 
                 <TextField
-                    id="title" label="Short title" value={title} onChange={(e) => setTitle(e.target.value)}
+                    id="title" label={<>Short title <Required /></>} aria-required="true" value={title} onChange={(e) => setTitle(e.target.value)}
                     maxLength={150} hint="5–150 characters, e.g. “Lift B1 not operating”" error={fieldError('title')}
                 />
 
                 <div className="space-y-1">
-                    <label htmlFor="description" className="block text-sm font-medium">What is wrong?</label>
+                    <label htmlFor="description" className="block text-sm font-medium">What is wrong? <Required /></label>
                     <textarea
-                        id="description" rows={5} value={description} onChange={(e) => setDescription(e.target.value)} maxLength={3000}
+                        id="description" aria-required="true" rows={5} value={description} onChange={(e) => setDescription(e.target.value)} maxLength={3000}
                         aria-invalid={fieldError('description') ? true : undefined}
                         aria-describedby={fieldError('description') ? 'description-error description-hint' : 'description-hint'}
                         className={`${inputClassName} py-2`}
@@ -183,10 +193,10 @@ export function ReportComplaintPage() {
                 </div>
 
                 <fieldset className="space-y-2" aria-describedby={fieldError('urgency') ? 'urgency-error' : undefined}>
-                    <legend className="text-sm font-medium">How urgent is it?</legend>
+                    <legend className="text-sm font-medium">How urgent is it? <Required /></legend>
                     {(Object.keys(urgencyLabel) as Urgency[]).map((value) => (
                         <label key={value} className="flex min-h-11 items-start gap-3 py-1">
-                            <input type="radio" name="urgency" className="mt-1" checked={urgency === value} onChange={() => setUrgency(value)} />
+                            <input type="radio" name="urgency" className="mt-0.5 size-5 shrink-0" checked={urgency === value} onChange={() => setUrgency(value)} />
                             <span><span className="font-medium">{urgencyLabel[value]}</span><span className="block text-sm text-slate-600">{urgencyHint[value]}</span></span>
                         </label>
                     ))}
@@ -194,10 +204,10 @@ export function ReportComplaintPage() {
                 </fieldset>
 
                 <fieldset className="space-y-2" aria-describedby={fieldError('affected_units') ? 'affected-error' : undefined}>
-                    <legend className="text-sm font-medium">How many Units are affected?</legend>
+                    <legend className="text-sm font-medium">How many Units are affected? <Required /></legend>
                     {(Object.keys(affectedUnitsLabel) as AffectedUnits[]).map((value) => (
                         <label key={value} className="flex min-h-11 items-center gap-3">
-                            <input type="radio" name="affected" checked={affectedUnits === value} onChange={() => setAffectedUnits(value)} />
+                            <input type="radio" className="size-5 shrink-0" name="affected" checked={affectedUnits === value} onChange={() => setAffectedUnits(value)} />
                             {affectedUnitsLabel[value]}
                         </label>
                     ))}
@@ -207,15 +217,15 @@ export function ReportComplaintPage() {
                 <fieldset className="space-y-2">
                     <legend className="text-sm font-medium">Impact</legend>
                     <label className="flex min-h-11 items-center gap-3">
-                        <input type="checkbox" checked={safetyRisk} onChange={(e) => setSafetyRisk(e.target.checked)} />
+                        <input type="checkbox" className="size-5 shrink-0" checked={safetyRisk} aria-describedby={fieldError('safety_risk') ? 'safety-risk-error' : undefined} onChange={(e) => setSafetyRisk(e.target.checked)} />
                         Someone could get hurt (safety risk)
                     </label>
                     <label className="flex min-h-11 items-center gap-3">
-                        <input type="checkbox" checked={serviceDown} onChange={(e) => setServiceDown(e.target.checked)} />
+                        <input type="checkbox" className="size-5 shrink-0" checked={serviceDown} aria-describedby={fieldError('essential_service_down') ? 'service-down-error' : undefined} onChange={(e) => setServiceDown(e.target.checked)} />
                         Water, electricity, a lift or security access is not working
                     </label>
-                    {['safety_risk', 'essential_service_down'].map((field) => fieldError(field) && (
-                        <p key={field} className="text-sm text-red-700">{fieldError(field)}</p>
+                    {([['safety_risk', 'safety-risk-error'], ['essential_service_down', 'service-down-error']] as const).map(([field, id]) => fieldError(field) && (
+                        <p key={field} id={id} className="text-sm text-red-700">{fieldError(field)}</p>
                     ))}
                 </fieldset>
 
@@ -225,4 +235,9 @@ export function ReportComplaintPage() {
             </form>
         </section>
     );
+}
+
+/** The asterisk after a required field's label; screen readers hear "required" from aria-required or the word. */
+function Required() {
+    return <span className="text-red-700"><span aria-hidden="true">*</span><span className="sr-only">(required)</span></span>;
 }

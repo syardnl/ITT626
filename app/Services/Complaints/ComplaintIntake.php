@@ -17,7 +17,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 use Throwable;
 
-/** Records a Resident's new Complaint as Reported, with its Priority Score, reference, first history row and photos. */
+/** Records a Resident's new Complaint as Reported, with its Priority Score, reference, first history row, Repair Cycle 1 and photos. */
 class ComplaintIntake
 {
     public function __construct(
@@ -99,6 +99,7 @@ class ComplaintIntake
             ]);
 
             $complaint->statusHistory()->create(['changed_by' => $reporter->id, 'to_status' => ComplaintStatus::Reported]);
+            $complaint->repairCycles()->create(['number' => 1, 'started_at' => $complaint->created_at]);
             $this->photos->store($complaint, $reporter, $photos, $written);
             if ($key !== null) {
                 ComplaintSubmissionKey::create(['user_id' => $reporter->id, 'key' => $key, 'complaint_id' => $complaint->id]);

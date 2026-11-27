@@ -2,9 +2,11 @@
 
 namespace App\Http\Resources;
 
+use App\Models\ClassificationChange;
 use App\Models\Comment;
 use App\Models\Complaint;
 use App\Models\Evidence;
+use App\Models\RepairCycle;
 use App\Models\StatusChange;
 use App\Models\User;
 use Illuminate\Http\Request;
@@ -15,12 +17,19 @@ use Illuminate\Http\Request;
  */
 class ComplaintDetailResource extends ComplaintResource
 {
-    public const RELATIONS = ['location', 'category', 'statusHistory.actor', 'reporter.unit', 'evidence.uploader', 'comments.author.roles'];
+    public const RELATIONS = ['location', 'category', 'statusHistory.actor', 'reporter.unit', 'evidence.uploader', 'comments.author.roles', 'repairCycles',
+        'classificationChanges.actor', 'classificationChanges.fromCategory', 'classificationChanges.toCategory'];
 
     public function toArray(Request $request): array
     {
         return [
             ...parent::toArray($request),
+            // The office sees the Category's default priority as a baseline next to the Priority Score.
+            'category' => $this->category ? [
+                'id' => $this->category->id,
+                'name' => $this->category->name,
+                ...($request->user()->isOffice() ? ['default_priority' => $this->category->default_priority->value] : []),
+            ] : null,
             'reporter' => $this->when($request->user()->isOffice(), fn () => [
                 'id' => $this->reporter->id,
                 'name' => $this->reporter->name,
@@ -35,6 +44,9 @@ class ComplaintDetailResource extends ComplaintResource
             'priority_breakdown' => $this->priority_breakdown,
             'priority_rule_version' => $this->priority_rule_version,
             'initial_priority' => $this->initial_priority->value,
+            'reviewed_at' => $this->reviewed_at?->utc()->format('Y-m-d\TH:i:s\Z'),
+            // Sent back with a workflow action, so a change made meanwhile by someone else is refused (409).
+            'version' => $this->version,
             'evidence' => $this->evidence->map(fn (Evidence $photo) => [
                 'id' => $photo->id,
                 'type' => $photo->type->value,
@@ -45,25 +57,33 @@ class ComplaintDetailResource extends ComplaintResource
                 'uploaded_by' => ['id' => $photo->uploader->id, 'name' => $photo->uploader->name],
                 'url' => "/api/v1/attachments/{$photo->id}",
             ])->all(),
+            'repair_cycles' => $this->when($request->user()->isOffice(), fn () => $this->repairCycles->map(fn (RepairCycle $cycle) => [
+                'number' => $cycle->number,
+                'started_at' => $cycle->started_at->utc()->format('Y-m-d\TH:i:s\Z'),
+            ])->all()),
             'timeline' => $this->timelineFor($request->user()),
         ];
     }
 
     /**
-     * Status changes and the comments this viewer may read, oldest first. Entries at the same
-     * second keep the order they were stored in, status changes first.
+     * Status changes, classifications (office only) and the comments this viewer may read, oldest
+     * first. Entries at the same second keep the order they were stored in: status changes, then
+     * classifications, then comments.
      */
     private function timelineFor(User $viewer): array
     {
         $statuses = $this->statusHistory->map(fn (StatusChange $change) => [
             'at' => $change->created_at->getTimestamp(), 'kind' => 0, 'id' => $change->id, 'entry' => TimelineEntry::status($change),
         ]);
+        $classifications = $viewer->isOffice() ? $this->classificationChanges->map(fn (ClassificationChange $change) => [
+            'at' => $change->created_at->getTimestamp(), 'kind' => 1, 'id' => $change->id, 'entry' => TimelineEntry::classification($change),
+        ]) : collect();
         $comments = $this->comments->filter(fn (Comment $comment) => $comment->isVisibleTo($viewer))->map(fn (Comment $comment) => [
-            'at' => $comment->created_at->getTimestamp(), 'kind' => 1, 'id' => $comment->id, 'entry' => TimelineEntry::comment($comment),
+            'at' => $comment->created_at->getTimestamp(), 'kind' => 2, 'id' => $comment->id, 'entry' => TimelineEntry::comment($comment),
         ]);
 
-        // `kind` breaks a same-second tie: the status change first, then the comment.
-        return $statuses->concat($comments)
+        // `kind` breaks a same-second tie.
+        return $statuses->concat($classifications)->concat($comments)
             ->sortBy([['at', 'asc'], ['kind', 'asc'], ['id', 'asc']])
             ->pluck('entry')
             ->values()

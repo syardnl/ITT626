@@ -3,7 +3,7 @@ import { Alert } from '../../components/Alert';
 import { SubmitButton } from '../../components/SubmitButton';
 import { inputClassName } from '../../components/TextField';
 import {
-    api, complaintStatusLabel, ensureCsrfCookie, formatDateTime, roleLabel, toApiError,
+    api, complaintStatusLabel, ensureCsrfCookie, formatDateTime, priorityLabel, roleLabel, toApiError,
     type ApiError, type CommentTimelineEntry, type CommentVisibility, type TimelineEntry,
 } from '../../lib/api';
 
@@ -27,6 +27,18 @@ export function ComplaintTimeline({ complaintId, timeline, commenting, onComment
                             <>
                                 <p className="font-medium">{complaintStatusLabel[entry.to_status]}</p>
                                 <p className="text-sm text-slate-600">{formatDateTime(entry.at)}{entry.actor && ` · ${entry.actor.name}`}</p>
+                                {entry.reason && <p className="text-sm">{entry.reason}</p>}
+                            </>
+                        ) : entry.type === 'classification' ? (
+                            <>
+                                <p className="font-medium">
+                                    Classified: {entry.to_category.name} · {priorityLabel[entry.to_priority]} priority
+                                </p>
+                                <p className="text-sm text-slate-600">
+                                    {formatDateTime(entry.at)} · {entry.actor.name}
+                                    {entry.from_priority !== entry.to_priority && ` · Priority was ${priorityLabel[entry.from_priority]}`}
+                                    {entry.from_category && entry.from_category.id !== entry.to_category.id && ` · Category was ${entry.from_category.name}`}
+                                </p>
                                 {entry.reason && <p className="text-sm">{entry.reason}</p>}
                             </>
                         ) : (

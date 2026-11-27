@@ -12,4 +12,6 @@ enum AuditAction: string
     case Updated = 'updated';
     case Deactivated = 'deactivated';
     case Reactivated = 'reactivated';
+    case Reviewed = 'complaint.reviewed';
+    case Classified = 'complaint.classified';
 }

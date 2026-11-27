@@ -10,6 +10,11 @@ enum Priority: string
     case Medium = 'medium';
     case Low = 'low';
 
+    public function label(): string
+    {
+        return ucfirst($this->value);
+    }
+
     /** 0 for Low up to 3 for Critical: the reverse of rank(). */
     public function severity(): int
     {

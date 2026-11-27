@@ -7,6 +7,7 @@ import {
 } from '../../lib/api';
 import { useAuth } from '../../lib/auth';
 import { ComplaintTimeline } from './ComplaintTimeline';
+import { ReviewPanel } from './ReviewPanel';
 
 export function ComplaintDetailPage() {
     const { id } = useParams();
@@ -59,6 +60,8 @@ export function ComplaintDetailPage() {
                     </div>
                 )}
             </dl>
+
+            {account?.role === 'manager' && <ReviewPanel complaint={complaint} onChanged={setComplaint} />}
 
             <section>
                 <h2 className="text-lg font-semibold">Description</h2>

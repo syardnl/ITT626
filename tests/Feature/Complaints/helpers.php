@@ -235,3 +235,19 @@ function verifyWork(int $complaintId, array $body)
 {
     return test()->postJson("/api/v1/complaints/{$complaintId}/verify", ['version' => loadedVersion($complaintId), ...$body]);
 }
+
+/** pendingVerificationSetup() with the work approved (Resolved) and Rina, the reporter, signed in. */
+function resolvedSetup(): array
+{
+    $setup = pendingVerificationSetup();
+    verifyWork($setup['complaint'], ['decision' => 'approve'])->assertOk();
+    test()->actingAs($setup['rina']);
+
+    return $setup;
+}
+
+/** Sends the version the signed-in account loaded unless $body names one. */
+function confirmResolution(int $complaintId, array $body)
+{
+    return test()->postJson("/api/v1/complaints/{$complaintId}/confirm-resolution", ['version' => loadedVersion($complaintId), ...$body]);
+}

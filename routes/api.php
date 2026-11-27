@@ -46,6 +46,7 @@ Route::middleware(['auth:sanctum', 'active'])->group(function () {
         Route::post('/complaints', [ComplaintController::class, 'store']);
         Route::post('/complaints/{complaint}/follow', [ComplaintFollowController::class, 'store'])->whereNumber('complaint');
         Route::delete('/complaints/{complaint}/follow', [ComplaintFollowController::class, 'destroy'])->whereNumber('complaint');
+        Route::post('/complaints/{complaint}/confirm-resolution', [ComplaintWorkflowController::class, 'answerResolution'])->whereNumber('complaint');
     });
     Route::middleware('role:resident,manager,technician')
         ->post('/complaints/{complaint}/comments', [ComplaintCommentController::class, 'store'])->whereNumber('complaint');

@@ -23,9 +23,11 @@ class AuditTrail
         array $changes = [],
         array $metadata = [],
         ?User $actor = null,
+        bool $bySystem = false,
     ): AuditLog {
         return AuditLog::create([
-            'actor_id' => ($actor ?? auth()->user())?->getKey(),
+            // The system acting on its own (a scheduled command) has no actor, whoever is signed in.
+            'actor_id' => $bySystem ? null : ($actor ?? auth()->user())?->getKey(),
             'action' => $action,
             'target_type' => $target ? self::typeOf($target) : null,
             'target_id' => $target?->getKey(),
@@ -40,7 +42,7 @@ class AuditTrail
      * only the fields that the last save changed, each as ['from' => …, 'to' => …].
      * $alsoChanged adds changes kept outside the model's own columns (e.g. a role).
      */
-    public function recordChange(AuditAction $action, Model $target, array $metadata = [], array $alsoChanged = []): AuditLog
+    public function recordChange(AuditAction $action, Model $target, array $metadata = [], array $alsoChanged = [], bool $bySystem = false): AuditLog
     {
         $ignored = [$target->getKeyName(), $target->getCreatedAtColumn(), $target->getUpdatedAtColumn()];
 
@@ -60,7 +62,7 @@ class AuditTrail
             ];
         }
 
-        return $this->record($action, $target, [...$changes, ...$alsoChanged], $metadata);
+        return $this->record($action, $target, [...$changes, ...$alsoChanged], $metadata, bySystem: $bySystem);
     }
 
     /** Short name used as target_type, e.g. App\Models\Location => "location". */

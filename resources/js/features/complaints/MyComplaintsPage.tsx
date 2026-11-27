@@ -17,6 +17,8 @@ const tabs: { scope: Scope; label: string }[] = [
 export function MyComplaintsPage() {
     const [searchParams, setSearchParams] = useSearchParams();
     const scope: Scope = searchParams.get('scope') === 'following' ? 'following' : 'mine';
+    // From the home page's "waiting for your answer" card: only own Resolved Complaints.
+    const awaitingOnly = scope === 'mine' && searchParams.get('status') === 'resolved';
     const [page, setPage] = useState(1);
     const [result, setResult] = useState<Paginated<Complaint | ComplaintSummary> | null>(null);
     const [error, setError] = useState<string | null>(null);
@@ -25,11 +27,11 @@ export function MyComplaintsPage() {
         let current = true;
         setResult(null);
         setError(null);
-        api.get<Paginated<Complaint | ComplaintSummary>>('/complaints', { params: { scope, page } })
+        api.get<Paginated<Complaint | ComplaintSummary>>('/complaints', { params: { scope, page, status: awaitingOnly ? 'resolved' : undefined } })
             .then((response) => current && setResult(response.data))
             .catch((caught) => current && setError(toApiError(caught).message));
         return () => { current = false; };
-    }, [scope, page]);
+    }, [scope, page, awaitingOnly]);
 
     function choose(next: Scope) {
         setPage(1);
@@ -56,10 +58,17 @@ export function MyComplaintsPage() {
                 ))}
             </nav>
 
+            {awaitingOnly && (
+                <p className="mt-4 text-sm">
+                    Showing Resolved Complaints waiting for your answer.{' '}
+                    <button type="button" onClick={() => choose('mine')} className="font-medium text-blue-700 underline">Show all</button>
+                </p>
+            )}
             {error && <div className="mt-4"><Alert kind="error">{error}</Alert></div>}
             {result && result.data.length === 0 && (
                 <p className="mt-6 text-slate-600">
-                    {scope === 'mine'
+                    {awaitingOnly ? 'Nothing is waiting for your answer.'
+                        : scope === 'mine'
                         ? 'You have not reported any problems yet.'
                         : 'You are not following any Complaints. When you report a problem at a Common Area, you can follow one already raised there.'}
                 </p>

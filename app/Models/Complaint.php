@@ -103,6 +103,12 @@ class Complaint extends Model
         return $this->hasMany(MaintenanceRecord::class)->orderBy('attempt');
     }
 
+    /** The reporter's Rating, given when they confirmed the repair. */
+    public function rating(): HasOne
+    {
+        return $this->hasOne(Rating::class);
+    }
+
     public function comments(): HasMany
     {
         return $this->hasMany(Comment::class)->orderBy('created_at')->orderBy('id');

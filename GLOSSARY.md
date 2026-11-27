@@ -122,6 +122,10 @@ _Avoid_: Reject (unqualified)
 The Resident reporting that a Resolved problem persists (Resolved → Returned); this starts a new Repair Cycle.
 _Avoid_: Reopen, dispute
 
+**Rating**:
+The reporting Resident's optional 1–5 score, with optional feedback, given when they confirm a repair; at most one per Complaint. The office sees it; the Technician does not.
+_Avoid_: Review, score (alone), feedback (for the score itself)
+
 **Assignment**:
 The link between a Complaint and the one Technician currently responsible for it. A Complaint has at most one active Assignment; Reassignment ends it and creates another, moving the Complaint back to Assigned.
 

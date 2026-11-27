@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Complaints\AssignTechnicianRequest;
 use App\Http\Requests\Complaints\ClassifyComplaintRequest;
 use App\Http\Requests\Complaints\CompleteWorkRequest;
+use App\Http\Requests\Complaints\ConfirmResolutionRequest;
 use App\Http\Requests\Complaints\RecommendTechniciansRequest;
 use App\Http\Requests\Complaints\ReviewComplaintRequest;
 use App\Http\Requests\Complaints\StartWorkRequest;
@@ -69,6 +70,11 @@ class ComplaintWorkflowController extends Controller
     public function verify(VerifyWorkRequest $request, int $complaint): ComplaintDetailResource
     {
         return $this->detail($this->workflow->verify($request->user(), $complaint, $request->decision(), $request->reason(), $request->version()));
+    }
+
+    public function answerResolution(ConfirmResolutionRequest $request, int $complaint): ComplaintDetailResource
+    {
+        return $this->detail($this->workflow->answerResolution($request->user(), $complaint, $request->answer(), $request->version()));
     }
 
     private function detail(Complaint $complaint): ComplaintDetailResource

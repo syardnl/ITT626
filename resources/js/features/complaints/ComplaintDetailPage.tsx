@@ -7,6 +7,7 @@ import {
 } from '../../lib/api';
 import { useAuth } from '../../lib/auth';
 import { ComplaintTimeline } from './ComplaintTimeline';
+import { ConfirmResolutionPanel, RatingGiven } from './ConfirmResolutionPanel';
 import { AssignmentPanel } from './AssignmentPanel';
 import { MaintenanceRecords } from './MaintenanceRecords';
 import { ReviewPanel } from './ReviewPanel';
@@ -74,6 +75,8 @@ export function ComplaintDetailPage() {
                 </>
             )}
             {account?.role === 'technician' && <TechnicianWorkPanel complaint={complaint} onChanged={setComplaint} />}
+            {account?.role === 'resident' && <ConfirmResolutionPanel key={complaint.id} complaint={complaint} onChanged={setComplaint} />}
+            {complaint.rating && <RatingGiven rating={complaint.rating} byYou={account?.role === 'resident'} />}
 
             <section>
                 <h2 className="text-lg font-semibold">Description</h2>

@@ -412,6 +412,12 @@ export interface ComplaintDetail extends Complaint {
     resolved_at: string | null;
     /** When a Manager pressed Begin review; null while Reported. */
     reviewed_at: string | null;
+    /** When it was Closed, by the reporter's confirmation or Automatic Closure; null until then. */
+    closed_at: string | null;
+    /** The office and the reporter: the Rating given at confirmation, or null. Never sent to a Technician. */
+    rating?: Rating | null;
+    /** The reporter only: Resolved, so they may confirm the repair or return it. */
+    can_confirm_resolution?: boolean;
     /** Sent back with workflow actions, so a change made meanwhile by someone else is refused with 409. */
     version: number;
     /** The office also sees the Category's default priority. */
@@ -435,6 +441,13 @@ export interface ComplaintDetail extends Complaint {
     maintenance_records: (MaintenanceRecord | MaintenanceRecordSummary)[];
     /** The office and the assigned Technician; only the office gets the email. */
     reporter?: { id: number; name: string; email?: string; unit: { id: number; code: string } | null };
+}
+
+/** The reporter's optional 1–5 score and feedback, given when confirming the repair. */
+export interface Rating {
+    score: number;
+    feedback: string | null;
+    rated_at: string;
 }
 
 /** A Complaint's Category name, or how to say it has none yet. */

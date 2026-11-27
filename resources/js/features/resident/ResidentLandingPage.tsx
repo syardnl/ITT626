@@ -17,6 +17,7 @@ interface BlockComplaint extends ComplaintSummary {
 }
 
 const LATEST = 5;
+const AWAITING = 10;
 
 /** The Block holding this Unit, from the Location tree. */
 function blockOf(tree: LocationNode[], unitId: number): LocationNode | null {
@@ -83,6 +84,8 @@ export function ResidentLandingPage() {
     const unitId = account?.unit?.id;
 
     const [latest, setLatest] = useState<Complaint[] | null>(null);
+    const [awaiting, setAwaiting] = useState<{ complaints: Complaint[]; total: number }>({ complaints: [], total: 0 });
+    const [awaitingError, setAwaitingError] = useState<string | null>(null);
     const [counts, setCounts] = useState<MyCounts | null>(null);
     const [mineError, setMineError] = useState<string | null>(null);
 
@@ -99,6 +102,10 @@ export function ResidentLandingPage() {
                 if (current) setCounts(found);
             })
             .catch((caught) => current && setMineError(toApiError(caught).message));
+        // Resolved Complaints waiting for the reporter to confirm the repair or return it.
+        api.get<Paginated<Complaint>>('/complaints', { params: { scope: 'mine', status: 'resolved', per_page: AWAITING } })
+            .then((response) => current && setAwaiting({ complaints: response.data.data, total: response.data.meta.total }))
+            .catch((caught) => current && setAwaitingError(toApiError(caught).message));
         return () => { current = false; };
     }, []);
 
@@ -132,6 +139,32 @@ export function ResidentLandingPage() {
             </section>
 
             {mineError && <Alert kind="error">{mineError}</Alert>}
+
+            {awaitingError && <Alert kind="error">{awaitingError}</Alert>}
+            {awaiting.complaints.length > 0 && (
+                <section aria-labelledby="awaiting-heading" className="space-y-3">
+                    <h2 id="awaiting-heading" className="text-lg font-semibold">Waiting for your answer</h2>
+                    <ul className="space-y-3">
+                        {awaiting.complaints.map((complaint) => (
+                            <li key={complaint.id}>
+                                <Link
+                                    to={`/resident/complaints/${complaint.id}`}
+                                    className="block rounded-lg border border-green-300 bg-green-50 p-4 hover:bg-green-100 focus:outline-2 focus:outline-offset-2 focus:outline-blue-600"
+                                >
+                                    <p className="font-medium">{complaint.title}</p>
+                                    <p className="mt-1 text-sm">The repair is done. Is the problem fixed? Confirm it or tell us it is not.</p>
+                                    <p className="mt-1 text-sm text-slate-600">{complaint.reference_no} · {complaint.location.name}</p>
+                                </Link>
+                            </li>
+                        ))}
+                    </ul>
+                    {awaiting.total > awaiting.complaints.length && (
+                        <Link to="/resident/complaints?status=resolved" className="text-sm font-medium text-blue-700 underline-offset-2 hover:underline">
+                            See all {awaiting.total} waiting for your answer
+                        </Link>
+                    )}
+                </section>
+            )}
 
             <section aria-labelledby="counts-heading">
                 <h2 id="counts-heading" className="sr-only">My Complaints at a glance</h2>

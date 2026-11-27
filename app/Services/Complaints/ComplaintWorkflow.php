@@ -6,6 +6,7 @@ use App\Enums\AuditAction;
 use App\Enums\CommentVisibility;
 use App\Enums\ComplaintStatus;
 use App\Enums\Priority;
+use App\Enums\ResidentDecision;
 use App\Enums\VerificationDecision;
 use App\Models\Category;
 use App\Models\Complaint;
@@ -221,6 +222,65 @@ class ComplaintWorkflow
         }, fn (Complaint $complaint) => self::verificationRefusal($complaint->status));
     }
 
+    /**
+     * The reporter's answer to a Resolved Complaint. Confirm: it is closed, with an optional Rating.
+     * Return (a Resident Return, with a reason): → Returned, to the same Technician, starting a new
+     * Repair Cycle (ADR 0005). The reason goes on the status row: the Technician needs it.
+     */
+    public function answerResolution(User $resident, int $complaintId, ResidentAnswer $answer, ?int $version): Complaint
+    {
+        return $this->act($resident, $complaintId, $version, [ComplaintStatus::Resolved], function (Complaint $complaint) use ($resident, $answer) {
+            if ($answer->decision === ResidentDecision::Confirm) {
+                if ($answer->score !== null) {
+                    $complaint->rating()->create(['user_id' => $resident->id, 'score' => $answer->score, 'feedback' => $answer->feedback]);
+                }
+                $this->closeComplaint($complaint, $resident, array_filter(['rating' => $answer->score], fn ($value) => $value !== null));
+
+                return;
+            }
+
+            $now = now();
+            $cycle = $complaint->repairCycles()->create(['number' => $complaint->repairCycles()->max('number') + 1, 'started_at' => $now]);
+            // resolved_at keeps the last Resolution (Phase 4 measures it); the next approval sets it again.
+            $this->moveTo($complaint, ComplaintStatus::Returned, $resident, [], $answer->reason, at: $now);
+            $this->audit->recordChange(AuditAction::ResidentReturned, $complaint, metadata: [
+                'reason' => $answer->reason, 'repair_cycle' => $cycle->number,
+            ]);
+        }, self::answerRefusal(...));
+    }
+
+    /**
+     * Automatic Closure: Resolved → Closed by the system, 7 days after the Resolution with no answer
+     * from the reporter. Closed and locked as a confirmation is, so only one of them wins.
+     */
+    public function closeAutomatically(int $complaintId): Complaint
+    {
+        return $this->act(null, $complaintId, null, [ComplaintStatus::Resolved], function (Complaint $complaint) {
+            if ($complaint->resolved_at === null || $complaint->resolved_at->gt(now()->subDays(self::AUTOMATIC_CLOSURE_DAYS))) {
+                throw new WorkflowConflict('This Complaint has not been Resolved for '.self::AUTOMATIC_CLOSURE_DAYS.' days.');
+            }
+            $this->closeComplaint($complaint, null, ['automatic' => true]);
+        });
+    }
+
+    /** Days (of calendar time, so 168 hours for 7) a Complaint stays Resolved before Automatic Closure. */
+    public const AUTOMATIC_CLOSURE_DAYS = 7;
+
+    /** Why the reporter cannot answer this Complaint now, or null when they can; shared with ConfirmResolutionRequest's early check. */
+    public static function answerRefusal(Complaint $complaint): ?string
+    {
+        return $complaint->status === ComplaintStatus::Resolved ? null : "This Complaint is {$complaint->status->label()}, not Resolved.";
+    }
+
+    /** Resolved → Closed, ending the Assignment. A null actor is the system. */
+    private function closeComplaint(Complaint $complaint, ?User $actor, array $metadata): void
+    {
+        $now = now();
+        $complaint->currentAssignment?->forceFill(['ended_at' => $now])->save();
+        $this->moveTo($complaint, ComplaintStatus::Closed, $actor, ['closed_at' => $now], at: $now);
+        $this->audit->recordChange(AuditAction::Closed, $complaint, metadata: $metadata, bySystem: $actor === null);
+    }
+
     /** Why work in this status cannot be verified; shared with VerifyWorkRequest's early check. */
     public static function verificationRefusal(ComplaintStatus $status): string
     {
@@ -293,7 +353,7 @@ class ComplaintWorkflow
     }
 
     /**
-     * Locks the Complaint the actor can see (404 otherwise), refuses with 409 when its status is not
+     * Locks the Complaint the actor can see (404 otherwise; a null actor is the system), refuses with 409 when its status is not
      * one of $allowed or its version is not the one the actor loaded, then runs $change. A null
      * $version skips that check: only for the system acting on its own (Automatic Closure, seeding);
      * every HTTP request must send one.
@@ -301,10 +361,11 @@ class ComplaintWorkflow
      * @param  list<ComplaintStatus>  $allowed
      * @param  ?Closure(Complaint): ?string  $refusal  the 409 message for a status not allowed
      */
-    private function act(User $actor, int $complaintId, ?int $version, array $allowed, Closure $change, ?Closure $refusal = null): Complaint
+    private function act(?User $actor, int $complaintId, ?int $version, array $allowed, Closure $change, ?Closure $refusal = null): Complaint
     {
         return DB::transaction(function () use ($actor, $complaintId, $version, $allowed, $change, $refusal) {
-            $complaint = Complaint::query()->visibleTo($actor)->lockForUpdate()->findOrFail($complaintId);
+            // The system (a null actor) sees every Complaint.
+            $complaint = Complaint::query()->when($actor, fn ($query) => $query->visibleTo($actor))->lockForUpdate()->findOrFail($complaintId);
 
             if (! in_array($complaint->status, $allowed, true)) {
                 throw new WorkflowConflict(($refusal ? $refusal($complaint) : null) ?? "This Complaint is already {$complaint->status->label()}.");

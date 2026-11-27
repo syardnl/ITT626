@@ -15,7 +15,8 @@ return new class extends Migration
             $table->id();
             $table->foreignId('complaint_id')->constrained()->restrictOnDelete();
             $table->unsignedSmallInteger('number');
-            $table->timestamp('started_at');
+            // useCurrent: never ON UPDATE CURRENT_TIMESTAMP, whatever explicit_defaults_for_timestamp says.
+            $table->timestamp('started_at')->useCurrent();
             $table->timestamps();
 
             $table->unique(['complaint_id', 'number']);

@@ -32,7 +32,7 @@ export function ReviewPanel({ complaint, onChanged }: Props) {
 
 function BeginReview({ complaint, onChanged }: Props) {
     const [busy, setBusy] = useState(false);
-    const [error, setError] = useState<string | null>(null);
+    const [error, setError] = useState<ApiError | null>(null);
 
     async function begin() {
         setBusy(true);
@@ -42,7 +42,7 @@ function BeginReview({ complaint, onChanged }: Props) {
             const response = await api.post<{ data: ComplaintDetail }>(`/complaints/${complaint.id}/review`, { version: complaint.version });
             onChanged(response.data.data);
         } catch (caught) {
-            setError(toApiError(caught).message);
+            setError(toApiError(caught));
             setBusy(false);
         }
     }
@@ -51,7 +51,7 @@ function BeginReview({ complaint, onChanged }: Props) {
         <section aria-labelledby="review-heading" className="space-y-3 rounded-md border border-blue-200 bg-blue-50 p-4">
             <h2 id="review-heading" className="text-lg font-semibold">Review</h2>
             <p className="text-sm">Nobody has reviewed this Complaint yet. Begin review to confirm its Category and Priority.</p>
-            {error && <Alert kind="error">{error} Reload the page to see the latest.</Alert>}
+            {error && <Alert kind="error">{error.message}{error.status === 409 && ' Reload the page to see the latest.'}</Alert>}
             <button
                 type="button" onClick={begin} disabled={busy}
                 className="min-h-11 rounded-md bg-blue-700 px-5 font-medium text-white hover:bg-blue-800 focus:outline-2 focus:outline-offset-2 focus:outline-blue-600 disabled:opacity-60"
@@ -76,9 +76,14 @@ function Classification({ complaint, onChanged }: Props) {
             .catch((caught) => setError(toApiError(caught)));
     }, []);
 
-    const overriding = priority !== complaint.initial_priority;
-    const chosenCategory = categories?.find((category) => String(category.id) === categoryId);
+    // A new Priority other than the suggested one needs a reason; keeping an override already explained does not.
+    const needsReason = priority !== complaint.initial_priority && priority !== complaint.priority;
+    // /categories lists active Categories only; a retired current one comes from the Complaint itself.
+    const chosenCategory = categories?.find((category) => String(category.id) === categoryId)
+        ?? (complaint.category && String(complaint.category.id) === categoryId ? complaint.category : undefined);
     const fieldError = (field: string) => error?.errors[field]?.[0];
+    const inlineFields = ['category_id', 'priority', 'priority_reason'];
+    const showsInline = !!error && inlineFields.some((field) => error.errors[field]);
 
     async function submit(event: FormEvent) {
         event.preventDefault();
@@ -90,7 +95,7 @@ function Classification({ complaint, onChanged }: Props) {
             const response = await api.patch<{ data: ComplaintDetail }>(`/complaints/${complaint.id}/classification`, {
                 category_id: categoryId === '' ? null : Number(categoryId),
                 priority,
-                priority_reason: overriding ? reason : null,
+                priority_reason: needsReason ? reason : null,
                 version: complaint.version,
             });
             onChanged(response.data.data);
@@ -119,12 +124,12 @@ function Classification({ complaint, onChanged }: Props) {
                 </dl>
                 <p className="mt-2 text-sm">
                     Suggested Priority: <span className="font-medium">{priorityLabel[complaint.initial_priority]}</span>
-                    {chosenCategory && <> · {chosenCategory.name} default: <span className="font-medium">{priorityLabel[chosenCategory.default_priority]}</span></>}
+                    {chosenCategory?.default_priority && <> · {chosenCategory.name} default: <span className="font-medium">{priorityLabel[chosenCategory.default_priority]}</span></>}
                 </p>
             </div>
 
             <form onSubmit={submit} noValidate className="space-y-4">
-                {error && Object.keys(error.errors).length === 0 && <Alert kind="error">{error.message}{error.status === 409 && ' Reload the page to see the latest.'}</Alert>}
+                {error && !showsInline && <Alert kind="error">{error.message}{error.status === 409 && ' Reload the page to see the latest.'}</Alert>}
                 {saved && <Alert kind="success">Classification saved.</Alert>}
 
                 <div className="space-y-1">
@@ -158,7 +163,7 @@ function Classification({ complaint, onChanged }: Props) {
                     {fieldError('priority') && <p className="text-sm text-red-700">{fieldError('priority')}</p>}
                 </fieldset>
 
-                {overriding && (
+                {needsReason && (
                     <div className="space-y-1">
                         <label htmlFor="priority-reason" className="block text-sm font-medium">Reason for changing the Priority</label>
                         <textarea

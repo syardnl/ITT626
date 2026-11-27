@@ -19,7 +19,7 @@ return new class extends Migration
             $table->string('to_priority', 20);
             // Required when to_priority differs from the Complaint's computed initial_priority.
             $table->text('reason')->nullable();
-            $table->timestamp('created_at');
+            $table->timestamp('created_at')->useCurrent();
 
             $table->index(['complaint_id', 'created_at']);
         });

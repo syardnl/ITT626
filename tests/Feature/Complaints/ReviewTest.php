@@ -88,3 +88,11 @@ it('requires the version the Manager loaded', function () {
 
     $this->postJson("/api/v1/complaints/{$complaint['id']}/review")->assertUnprocessable()->assertJsonValidationErrors('version');
 });
+
+it('answers 409, not a validation error, when review has already begun', function () {
+    ['complaint' => $complaint] = reviewSetup();
+    beginReview($complaint['id'])->assertOk();
+
+    $this->postJson("/api/v1/complaints/{$complaint['id']}/review")->assertConflict()
+        ->assertJsonPath('message', 'This Complaint is already Under Review.');
+});

@@ -13,8 +13,8 @@ use Illuminate\Validation\Rule;
 use Illuminate\Validation\Validator;
 
 /**
- * A Manager confirming or changing a Complaint's Category and final Priority. A Priority other
- * than the suggested one (the Priority Score's) needs a reason. The answer reads: not found, then
+ * A Manager confirming or changing a Complaint's Category and final Priority. Changing to a
+ * Priority other than the suggested one (the Priority Score's) needs a reason. The answer reads: not found, then
  * a status that does not allow it (409), and only then a validation error. ComplaintWorkflow
  * checks the status again under the row lock.
  */
@@ -49,8 +49,9 @@ class ClassifyComplaintRequest extends FormRequest
     {
         return [function (Validator $validator) {
             // initial_priority is fixed at submission, so reading it outside the workflow's lock is safe.
+            // Keeping the current Priority needs no new reason: an override was explained when it was made.
             $suggested = $this->complaint()->initial_priority;
-            if ($validator->errors()->has('priority') || $this->priority() === $suggested) {
+            if ($validator->errors()->has('priority') || $this->priority() === $suggested || $this->priority() === $this->complaint()->priority) {
                 return;
             }
             if (blank($this->input('priority_reason'))) {

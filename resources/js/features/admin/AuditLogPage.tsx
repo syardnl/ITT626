@@ -25,6 +25,8 @@ const actions: Record<string, string> = {
     updated: 'Updated',
     deactivated: 'Deactivated',
     reactivated: 'Reactivated',
+    'complaint.reviewed': 'Review begun',
+    'complaint.classified': 'Classified',
 };
 
 const filterNames = ['actor', 'action', 'target_type', 'from', 'to'] as const;

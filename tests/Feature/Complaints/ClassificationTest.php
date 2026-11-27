@@ -198,3 +198,14 @@ it('lets a Manager confirm a Category that has since been retired', function () 
     $lift->update(['active' => false]);
     classify($complaint['id'], ['category_id' => $lift->id, 'priority' => 'low'])->assertUnprocessable()->assertJsonValidationErrors('category_id');
 });
+
+it('needs no new reason to keep an explained override while changing the Category', function () {
+    ['complaint' => $complaint, 'lift' => $lift] = classificationSetup();
+    classify($complaint['id'], ['category_id' => $lift->id, 'priority' => 'high', 'priority_reason' => 'Elderly residents.'])->assertOk();
+    $electrical = Category::where('key', 'electrical')->firstOrFail();
+
+    classify($complaint['id'], ['category_id' => $electrical->id, 'priority' => 'high'])->assertOk()
+        ->assertJsonPath('data.category.id', $electrical->id);
+    classify($complaint['id'], ['category_id' => $electrical->id, 'priority' => 'critical'])->assertUnprocessable()
+        ->assertJsonValidationErrors('priority_reason');
+});

@@ -16,6 +16,7 @@ use App\Http\Controllers\Api\ComplaintWorkflowController;
 use App\Http\Controllers\Api\EvidenceController;
 use App\Http\Controllers\Api\LocationTreeController;
 use App\Http\Controllers\Api\MeController;
+use App\Http\Controllers\Api\NotificationController;
 use App\Http\Controllers\Api\OpenComplaintsController;
 use App\Http\Controllers\Api\TechnicianController;
 use App\Http\Controllers\Api\TechnicianTaskController;
@@ -40,6 +41,9 @@ Route::middleware(['auth:sanctum', 'active'])->group(function () {
         Route::get('/complaints', [ComplaintController::class, 'index']);
         Route::get('/complaints/{complaint}', [ComplaintController::class, 'show'])->whereNumber('complaint');
         Route::get('/attachments/{evidence}', [EvidenceController::class, 'show'])->whereNumber('evidence');
+        Route::get('/notifications', [NotificationController::class, 'index']);
+        Route::post('/notifications/read-all', [NotificationController::class, 'readAll']);
+        Route::post('/notifications/{notification}/read', [NotificationController::class, 'read'])->whereUuid('notification');
     });
 
     Route::middleware('role:resident')->group(function () {

@@ -28,7 +28,7 @@ class TechnicianTaskController extends Controller
     public function __invoke(Request $request): JsonResponse
     {
         $technician = $request->user()->technician;
-        $query = fn () => Complaint::query()->latestAssignmentHeldBy($technician->id)->with(['location', 'category', 'assignments']);
+        $query = fn () => Complaint::query()->latestAssignmentHeldBy($technician->id)->with([...ComplaintResource::LIST_RELATIONS, 'assignments']);
         // Open work in full; finished work only the most recent, so the list does not grow forever.
         $tasks = $technician === null ? collect() : $query()->whereNotIn('status', self::GROUPS['completed'])->get()
             ->concat($query()->whereIn('status', self::GROUPS['completed'])->latest('updated_at')->latest('id')->limit(self::COMPLETED_SHOWN)->get());
@@ -50,7 +50,7 @@ class TechnicianTaskController extends Controller
 
         // Work reassigned to someone else: read-only, most recently changed first, dated by their own last Assignment.
         $groups['history'] = $technician === null ? [] : Complaint::query()->reassignedAwayFrom($technician->id)
-            ->with(['location', 'category', 'assignments'])
+            ->with([...ComplaintResource::LIST_RELATIONS, 'assignments'])
             ->latest('updated_at')->latest('id')->limit(self::COMPLETED_SHOWN)->get()
             ->map(fn (Complaint $complaint) => [
                 ...(new ComplaintResource($complaint))->toArray($request),

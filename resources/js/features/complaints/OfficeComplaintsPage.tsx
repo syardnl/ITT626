@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router';
 import { Alert } from '../../components/Alert';
+import { SlaBadge } from '../../components/SlaBadge';
 import { inputClassName } from '../../components/TextField';
 import {
     api, categoryName, complaintStatusLabel, formatDateTime, priorities, priorityLabel, toApiError,
@@ -22,10 +23,11 @@ interface Filters {
     category: string;
     block: string;
     safety_risk: string;
+    sla: string;
     sort: string;
 }
 
-const noFilters: Filters = { q: '', status: '', priority: '', category: '', block: '', safety_risk: '', sort: '' };
+const noFilters: Filters = { q: '', status: '', priority: '', category: '', block: '', safety_risk: '', sla: '', sort: '' };
 
 /** Every Complaint, read-only, for the office (Manager or Administrator). Detail links go under `basePath`. */
 export function OfficeComplaintsPage({ basePath }: { basePath: string }) {
@@ -85,6 +87,7 @@ export function OfficeComplaintsPage({ basePath }: { basePath: string }) {
                     ...categories.map((c) => ({ value: String(c.id), label: c.name }))])}
                 {select('block', 'Block', [{ value: '', label: 'Any Block' }, ...blocks.map((b) => ({ value: String(b.id), label: b.name }))])}
                 {select('safety_risk', 'Safety risk', [{ value: '', label: 'Any' }, { value: '1', label: 'Safety risk only' }, { value: '0', label: 'No safety risk' }])}
+                {select('sla', 'SLA', [{ value: '', label: 'Any' }, { value: 'breached', label: 'Breached (open)' }])}
                 {select('sort', 'Sort', sorts)}
             </div>
 
@@ -106,6 +109,7 @@ export function OfficeComplaintsPage({ basePath }: { basePath: string }) {
                             <p className="mt-1 text-sm">
                                 <span className="font-medium">{complaintStatusLabel[complaint.status]}</span> · {priorityLabel[complaint.priority]} priority
                             </p>
+                            {complaint.sla_status && <p className="mt-2"><SlaBadge status={complaint.sla_status} /></p>}
                         </Link>
                     </li>
                 ))}

@@ -272,6 +272,14 @@ export interface Complaint {
     category: { id: number; name: string } | null;
     location: { id: number; code: string; name: string; type: LocationType };
     created_at: string;
+    /** Open Complaints only: the SLA Indicator, computed when read; null once Resolved or Closed. */
+    sla_status: SlaStatus | null;
+}
+
+export interface SlaStatus {
+    state: 'on_track' | 'due_soon' | 'breached';
+    /** The next deadline still to meet, or null when none is left. */
+    due_at: string | null;
 }
 
 /**
@@ -533,4 +541,12 @@ export interface RepairCycle {
     responded_at: string | null;
     resolution_due_at: string | null;
     resolved_at: string | null;
+    breaches: SlaBreach[];
+}
+
+/** A recorded SLA Breach; never cleared. */
+export interface SlaBreach {
+    type: 'response' | 'resolution';
+    due_at: string;
+    detected_at: string;
 }

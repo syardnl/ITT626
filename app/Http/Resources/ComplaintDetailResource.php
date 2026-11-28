@@ -12,6 +12,7 @@ use App\Models\Evidence;
 use App\Models\Expense;
 use App\Models\MaintenanceRecord;
 use App\Models\RepairCycle;
+use App\Models\SlaBreach;
 use App\Models\StatusChange;
 use App\Models\User;
 use Carbon\CarbonInterface;
@@ -26,7 +27,7 @@ class ComplaintDetailResource extends ComplaintResource
     public const RELATIONS = ['location', 'category', 'statusHistory.actor', 'reporter.unit', 'evidence.uploader', 'comments.author.roles', 'repairCycles',
         'classificationChanges.actor', 'classificationChanges.fromCategory', 'classificationChanges.toCategory',
         'assignments.technician.user', 'assignments.assigner',
-        'maintenanceRecords.technician.user', 'maintenanceRecords.verifier', 'maintenanceRecords.expenses', 'maintenanceRecords.photos', 'maintenanceRecords.repairCycle', 'evidence.maintenanceRecord.technician', 'rating'];
+        'maintenanceRecords.technician.user', 'maintenanceRecords.verifier', 'maintenanceRecords.expenses', 'maintenanceRecords.photos', 'maintenanceRecords.repairCycle', 'evidence.maintenanceRecord.technician', 'rating', 'repairCycles.breaches', 'currentCycle.breaches'];
 
     public function toArray(Request $request): array
     {
@@ -86,6 +87,11 @@ class ComplaintDetailResource extends ComplaintResource
                 'responded_at' => self::time($cycle->responded_at),
                 'resolution_due_at' => self::time($cycle->resolution_due_at),
                 'resolved_at' => self::time($cycle->resolved_at),
+                'breaches' => $cycle->breaches->map(fn (SlaBreach $breach) => [
+                    'type' => $breach->type->value,
+                    'due_at' => self::time($breach->due_at),
+                    'detected_at' => self::time($breach->detected_at),
+                ])->all(),
             ])->all()),
             // Everyone who sees the Complaint in full: the current cycle's deadlines.
             'sla' => $this->currentSla(),

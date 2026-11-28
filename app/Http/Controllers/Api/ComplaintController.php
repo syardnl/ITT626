@@ -30,7 +30,7 @@ class ComplaintController extends Controller
 
         $complaints = $request->applySort(Complaint::query())
             ->visibleTo($viewer)
-            ->with(['location', 'category'])
+            ->with(ComplaintResource::LIST_RELATIONS)
             ->when($scope === 'mine', fn (Builder $query) => $query->where('reporter_id', $viewer->id))
             // A followed Complaint stays in the list until it is Closed.
             ->when($scope === 'following', fn (Builder $query) => $query->followedBy($viewer)
@@ -47,6 +47,7 @@ class ComplaintController extends Controller
                 : $query->where('category_id', $request->integer('category')))
             ->when($request->filled('block'), fn (Builder $query) => $query->whereIn('location_id', Location::withinBlock($request->integer('block'))->select('id')))
             ->when($request->filled('location'), fn (Builder $query) => $query->where('location_id', $request->integer('location')))
+            ->when($request->input('sla') === 'breached', fn (Builder $query) => $query->slaBreached())
             ->when($request->has('safety_risk'), fn (Builder $query) => $query->where('safety_risk', $request->boolean('safety_risk')))
             ->latest()->latest('id')
             ->paginate($request->integer('per_page', 25))

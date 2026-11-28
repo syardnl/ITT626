@@ -10,3 +10,6 @@ Artisan::command('inspire', function () {
 
 // Automatic Closure (story 36). Run the scheduler with `php artisan schedule:work` (development) or a cron entry for `schedule:run`.
 Schedule::command('complaints:close-resolved')->hourly()->withoutOverlapping(10);   // a run killed mid-way blocks the next ones for 10 minutes, not a day
+
+// SLA breach check (design §6.3): every five minutes; a late run still records every breach, once.
+Schedule::command('complaints:check-sla')->everyFiveMinutes()->withoutOverlapping(10);

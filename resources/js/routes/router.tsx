@@ -13,6 +13,7 @@ import { MyComplaintsPage } from '../features/complaints/MyComplaintsPage';
 import { OfficeComplaintsPage } from '../features/complaints/OfficeComplaintsPage';
 import { ReportComplaintPage } from '../features/complaints/ReportComplaintPage';
 import { ManagerLandingPage } from '../features/manager/ManagerLandingPage';
+import { NotificationsPage } from '../features/notifications/NotificationsPage';
 import { ResidentLandingPage } from '../features/resident/ResidentLandingPage';
 import { MyProfilePage } from '../features/technician/MyProfilePage';
 import { TechnicianLandingPage } from '../features/technician/TechnicianLandingPage';
@@ -34,23 +35,27 @@ export const router = createBrowserRouter([
     { path: '/reset-password', element: <ChoosePasswordPage purpose="reset" /> },
     { path: '/set-password', element: <ChoosePasswordPage purpose="setPassword" /> },
     { path: '/resident', element: <RoleShell role="resident" />, children: [
+        { path: 'notifications', element: <NotificationsPage /> },
         { index: true, element: <ResidentLandingPage /> },
         { path: 'complaints', element: <MyComplaintsPage /> },
         { path: 'complaints/new', element: <ReportComplaintPage /> },
         { path: 'complaints/:id', element: <ComplaintDetailPage /> },
     ] },
     { path: '/manager', element: <RoleShell role="manager" />, children: [
+        { path: 'notifications', element: <NotificationsPage /> },
         { index: true, element: <ManagerLandingPage /> },
         { path: 'complaints', element: <OfficeComplaintsPage basePath="/manager/complaints" /> },
         { path: 'complaints/:id', element: <ComplaintDetailPage /> },
         { path: 'technicians', element: <TechniciansPage /> },
     ] },
     { path: '/technician', element: <RoleShell role="technician" />, children: [
+        { path: 'notifications', element: <NotificationsPage /> },
         { index: true, element: <TechnicianLandingPage /> },
         { path: 'complaints/:id', element: <ComplaintDetailPage /> },
         { path: 'profile', element: <MyProfilePage /> },
     ] },
     { path: '/admin', element: <RoleShell role="administrator" />, children: [
+        { path: 'notifications', element: <NotificationsPage /> },
         { index: true, element: <AdministratorLandingPage /> },
         { path: 'complaints', element: <OfficeComplaintsPage basePath="/admin/complaints" /> },
         { path: 'complaints/:id', element: <ComplaintDetailPage /> },

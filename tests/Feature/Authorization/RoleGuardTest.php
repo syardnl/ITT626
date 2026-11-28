@@ -94,4 +94,7 @@ it('admits each role to the Complaint endpoints it may call', function (string $
     'technician tasks' => ['GET', '/api/v1/technician/tasks', [Role::Technician]],
     'start work' => ['POST', '/api/v1/complaints/999999/start-work', [Role::Technician]],
     'complete work' => ['POST', '/api/v1/complaints/999999/complete-work', [Role::Technician]],
+    'notifications' => ['GET', '/api/v1/notifications', Role::cases()],
+    'read a notification' => ['POST', '/api/v1/notifications/00000000-0000-0000-0000-000000000000/read', Role::cases()],
+    'read all notifications' => ['POST', '/api/v1/notifications/read-all', Role::cases()],
 ]);

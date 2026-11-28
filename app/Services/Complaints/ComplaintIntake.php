@@ -11,6 +11,7 @@ use App\Models\ComplaintSubmissionKey;
 use App\Models\Location;
 use App\Models\User;
 use App\Services\Audit\AuditTrail;
+use App\Services\Notifications\ComplaintNotifier;
 use App\Services\Sla\SlaClock;
 use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Http\UploadedFile;
@@ -26,6 +27,7 @@ class ComplaintIntake
         private readonly AuditTrail $audit,
         private readonly EvidencePhotos $photos,
         private readonly SlaClock $sla,
+        private readonly ComplaintNotifier $notifier,
     ) {}
 
     /**
@@ -107,6 +109,7 @@ class ComplaintIntake
                 ComplaintSubmissionKey::create(['user_id' => $reporter->id, 'key' => $key, 'complaint_id' => $complaint->id]);
             }
             $this->audit->recordChange(AuditAction::Created, $complaint);
+            $this->notifier->submitted($complaint, $reporter);
 
             return $complaint;
         }, attempts: 3);   // retried if the database reports a deadlock

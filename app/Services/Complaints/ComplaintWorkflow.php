@@ -15,6 +15,7 @@ use App\Models\Technician;
 use App\Models\User;
 use App\Services\Assignments\AssignmentDetails;
 use App\Services\Audit\AuditTrail;
+use App\Services\Notifications\ComplaintNotifier;
 use App\Services\Sla\SlaClock;
 use Carbon\CarbonInterface;
 use Closure;
@@ -31,7 +32,7 @@ use Throwable;
  */
 class ComplaintWorkflow
 {
-    public function __construct(private readonly AuditTrail $audit, private readonly EvidencePhotos $photos, private readonly SlaClock $sla) {}
+    public function __construct(private readonly AuditTrail $audit, private readonly EvidencePhotos $photos, private readonly SlaClock $sla, private readonly ComplaintNotifier $notifier) {}
 
     /** Reported → Under Review; the review time is the Response (design §5). */
     public function beginReview(User $manager, int $complaintId, ?int $version): Complaint
@@ -110,6 +111,7 @@ class ComplaintWorkflow
                 $complaint->comments()->create(['author_id' => $manager->id, 'visibility' => CommentVisibility::Internal, 'body' => $details->note]);
             }
 
+            $this->notifier->assigned($complaint, $technician, $manager, first: $current === null);
             $this->audit->recordChange($current ? AuditAction::Reassigned : AuditAction::Assigned, $complaint, metadata: array_filter([
                 'technician_id' => $technician->id,
                 'previous_technician_id' => $current?->technician_id,

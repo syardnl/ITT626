@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react';
 import { Navigate, NavLink, Outlet } from 'react-router';
+import { NotificationBell } from '../components/NotificationBell';
 import { roleLabel, type Role } from '../lib/api';
 import { landingPath, useAuth } from '../lib/auth';
 
@@ -51,12 +52,15 @@ export function RoleShell({ role }: { role: Role }) {
                             {account.name} · {roleLabel[account.role]}
                         </p>
                     </div>
-                    <button
-                        type="button" onClick={() => void signOut()}
-                        className="min-h-11 rounded-md border border-slate-300 px-4 text-sm font-medium hover:bg-slate-100 focus:outline-2 focus:outline-blue-600"
-                    >
-                        Sign out
-                    </button>
+                    <div className="flex items-center gap-2">
+                        <NotificationBell to={`${landingPath[role]}/notifications`} />
+                        <button
+                            type="button" onClick={() => void signOut()}
+                            className="min-h-11 rounded-md border border-slate-300 px-4 text-sm font-medium hover:bg-slate-100 focus:outline-2 focus:outline-blue-600"
+                        >
+                            Sign out
+                        </button>
+                    </div>
                 </div>
                 {links.length > 0 && (
                     <nav aria-label="Sections" className="flex gap-1 overflow-x-auto px-2">

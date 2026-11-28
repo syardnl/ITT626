@@ -15,6 +15,7 @@ const navigation: Record<Role, { to: string; label: string }[]> = {
         { to: '/manager', label: 'Home' },
         { to: '/manager/complaints', label: 'Complaints' },
         { to: '/manager/technicians', label: 'Technicians' },
+        { to: '/manager/recurring', label: 'Recurring problems' },
     ],
     technician: [
         { to: '/technician', label: 'Home' },

@@ -111,7 +111,7 @@ class ComplaintWorkflow
                 $complaint->comments()->create(['author_id' => $manager->id, 'visibility' => CommentVisibility::Internal, 'body' => $details->note]);
             }
 
-            $this->notifier->assigned($complaint, $technician, $manager, first: $current === null);
+            $this->notifier->assigned($complaint, $technician, $manager, $current?->technician);
             $this->audit->recordChange($current ? AuditAction::Reassigned : AuditAction::Assigned, $complaint, metadata: array_filter([
                 'technician_id' => $technician->id,
                 'previous_technician_id' => $current?->technician_id,
@@ -404,7 +404,7 @@ class ComplaintWorkflow
         }
     }
 
-    /** Saves the new status (and any timestamps), bumps the version and appends the history row. */
+    /** Saves the new status (and any timestamps), bumps the version, appends the history row and tells those it concerns. */
     private function moveTo(Complaint $complaint, ComplaintStatus $to, ?User $actor, array $attributes = [], ?string $reason = null, ?CarbonInterface $at = null): void
     {
         $from = $complaint->status;
@@ -414,5 +414,6 @@ class ComplaintWorkflow
             $row->created_at = $at;   // the same instant as the change's other timestamps
         }
         $row->save();
+        $this->notifier->statusChanged($complaint, $from, $to, $actor);   // sent once the transaction commits
     }
 }

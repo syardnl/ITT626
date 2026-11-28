@@ -87,4 +87,15 @@ class User extends Authenticatable
         $this->roles()->sync([RoleModel::where('name', $role->value)->value('id')]);
         $this->unsetRelation('roles');
     }
+
+    /** This account's section of the SPA, where its links to a Complaint open: /resident, /manager, /technician or /admin. */
+    public function spaSection(): string
+    {
+        return match (true) {
+            $this->hasRole(Role::Resident) => '/resident',
+            $this->hasRole(Role::Manager) => '/manager',
+            $this->hasRole(Role::Technician) => '/technician',
+            default => '/admin',
+        };
+    }
 }

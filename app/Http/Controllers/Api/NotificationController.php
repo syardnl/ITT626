@@ -2,7 +2,6 @@
 
 namespace App\Http\Controllers\Api;
 
-use App\Enums\Role;
 use App\Http\Controllers\Controller;
 use App\Models\User;
 use Illuminate\Http\JsonResponse;
@@ -49,19 +48,12 @@ class NotificationController extends Controller
     /** The link opens the Complaint under the recipient's own section of the SPA. */
     private static function entry(DatabaseNotification $notification, User $user): array
     {
-        $section = match (true) {
-            $user->hasRole(Role::Resident) => 'resident',
-            $user->hasRole(Role::Manager) => 'manager',
-            $user->hasRole(Role::Technician) => 'technician',
-            default => 'admin',
-        };
-
         return [
             'id' => $notification->id,
             'event' => $notification->type,
             'message' => $notification->data['message'],
             'complaint' => ['id' => $notification->data['complaint_id'], 'reference_no' => $notification->data['reference_no']],
-            'link' => "/{$section}/complaints/{$notification->data['complaint_id']}",
+            'link' => "{$user->spaSection()}/complaints/{$notification->data['complaint_id']}",
             'read_at' => $notification->read_at?->utc()->format('Y-m-d\TH:i:s\Z'),
             'created_at' => $notification->created_at->utc()->format('Y-m-d\TH:i:s\Z'),
         ];

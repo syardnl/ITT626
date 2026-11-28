@@ -3,14 +3,17 @@
 namespace App\Console\Commands;
 
 use App\Enums\SlaBreachType;
+use App\Models\SlaBreach;
+use App\Services\Notifications\ComplaintNotifier;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
+use Throwable;
 
 /**
  * The SLA breach check (design §6.3, §11): records an SLA Breach for every Repair Cycle deadline
  * that has passed with its milestone missing, or whose milestone came after it, so a check that
  * runs late still catches every breach. The unique (cycle, type) key makes a re-run add nothing.
- * Runs every five minutes (routes/console.php).
+ * Each new breach then notifies the Managers once. Runs every five minutes (routes/console.php).
  */
 class CheckSlaBreaches extends Command
 {
@@ -18,7 +21,7 @@ class CheckSlaBreaches extends Command
 
     protected $description = 'Record an SLA Breach for each Response or Resolution deadline missed';
 
-    public function handle(): int
+    public function handle(ComplaintNotifier $notifier): int
     {
         $now = now()->utc()->format('Y-m-d H:i:s');
         $recorded = 0;
@@ -39,6 +42,30 @@ class CheckSlaBreaches extends Command
 
         $this->info("Recorded {$recorded} new SLA Breaches.");
 
-        return self::SUCCESS;
+        return $this->notifyManagers($notifier) ? self::SUCCESS : self::FAILURE;
+    }
+
+    /**
+     * Tells the Managers about every breach not yet notified, each in its own transaction that
+     * claims it first, so two runs at once cannot both notify it. One that fails stays unclaimed and
+     * is tried again on the next run.
+     */
+    private function notifyManagers(ComplaintNotifier $notifier): bool
+    {
+        $ok = true;
+        foreach (SlaBreach::query()->whereNull('notified_at')->orderBy('id')->pluck('id') as $id) {
+            try {
+                DB::transaction(function () use ($id, $notifier) {
+                    if (SlaBreach::query()->whereKey($id)->whereNull('notified_at')->update(['notified_at' => now()]) === 1) {
+                        $notifier->breached(SlaBreach::query()->with('complaint')->findOrFail($id));
+                    }
+                });
+            } catch (Throwable $failure) {
+                report($failure);
+                $ok = false;
+            }
+        }
+
+        return $ok;
     }
 }

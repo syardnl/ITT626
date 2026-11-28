@@ -18,6 +18,7 @@ use App\Http\Controllers\Api\LocationTreeController;
 use App\Http\Controllers\Api\MeController;
 use App\Http\Controllers\Api\NotificationController;
 use App\Http\Controllers\Api\OpenComplaintsController;
+use App\Http\Controllers\Api\RecurringFlagController;
 use App\Http\Controllers\Api\TechnicianController;
 use App\Http\Controllers\Api\TechnicianTaskController;
 use Illuminate\Support\Facades\Route;
@@ -63,6 +64,9 @@ Route::middleware(['auth:sanctum', 'active'])->group(function () {
         Route::get('/complaints/{complaint}/technician-recommendations', [ComplaintWorkflowController::class, 'recommendations'])->whereNumber('complaint');
         Route::post('/complaints/{complaint}/assignments', [ComplaintWorkflowController::class, 'assign'])->whereNumber('complaint');
         Route::post('/complaints/{complaint}/verify', [ComplaintWorkflowController::class, 'verify'])->whereNumber('complaint');
+        Route::get('/recurring-flags', [RecurringFlagController::class, 'index']);
+        Route::post('/recurring-flags/{flag}/acknowledge', [RecurringFlagController::class, 'acknowledge'])->whereNumber('flag');
+        Route::post('/recurring-flags/{flag}/dismiss', [RecurringFlagController::class, 'dismiss'])->whereNumber('flag');
     });
 
     Route::middleware('role:technician')->group(function () {

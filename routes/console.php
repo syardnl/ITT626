@@ -13,3 +13,6 @@ Schedule::command('complaints:close-resolved')->hourly()->withoutOverlapping(10)
 
 // SLA breach check (design §6.3): every five minutes; a late run still records every breach, once.
 Schedule::command('complaints:check-sla')->everyFiveMinutes()->withoutOverlapping(10);
+
+// Recurring Problem detection (design §6.4): nightly; the Health Score calculation (#50) follows it.
+Schedule::command('complaints:detect-recurring')->dailyAt('01:00')->withoutOverlapping(60);

@@ -13,6 +13,7 @@ import { MyComplaintsPage } from '../features/complaints/MyComplaintsPage';
 import { OfficeComplaintsPage } from '../features/complaints/OfficeComplaintsPage';
 import { ReportComplaintPage } from '../features/complaints/ReportComplaintPage';
 import { ManagerLandingPage } from '../features/manager/ManagerLandingPage';
+import { RecurringProblemsPage } from '../features/manager/RecurringProblemsPage';
 import { NotificationsPage } from '../features/notifications/NotificationsPage';
 import { ResidentLandingPage } from '../features/resident/ResidentLandingPage';
 import { MyProfilePage } from '../features/technician/MyProfilePage';
@@ -47,6 +48,7 @@ export const router = createBrowserRouter([
         { path: 'complaints', element: <OfficeComplaintsPage basePath="/manager/complaints" /> },
         { path: 'complaints/:id', element: <ComplaintDetailPage /> },
         { path: 'technicians', element: <TechniciansPage /> },
+        { path: 'recurring', element: <RecurringProblemsPage /> },
     ] },
     { path: '/technician', element: <RoleShell role="technician" />, children: [
         { path: 'notifications', element: <NotificationsPage /> },

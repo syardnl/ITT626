@@ -155,7 +155,8 @@ class Complaint extends Model
 
     /**
      * The Complaints this account may open: a Resident their own and those they follow, the
-     * office (Manager, Administrator) every one, a Technician those whose latest Assignment is theirs.
+     * office (Manager, Administrator) every one, a Technician those they have ever held an Assignment on
+     * (a previous assignee reads them, but only the current one acts: isAssignedTo).
      * Every read goes through here, so anything outside it is concealed as not found.
      */
     public function scopeVisibleTo(Builder $query, User $viewer): void
@@ -168,9 +169,21 @@ class Complaint extends Model
                     'location_id', Location::query()->where('type', LocationType::CommonArea)->select('id'),
                 ))),
             $viewer->isOffice() => $query,   // no restriction
-            $viewer->hasRole(Role::Technician) && $viewer->technician => $query->latestAssignmentHeldBy($viewer->technician->id),
+            $viewer->hasRole(Role::Technician) && $viewer->technician => $query->everAssignedTo($viewer->technician->id),
             default => $query->whereRaw('1 = 0'),
         };
+    }
+
+    /** Every Complaint the Technician has held an Assignment on, current or ended. */
+    public function scopeEverAssignedTo(Builder $query, int $technicianId): void
+    {
+        $query->whereHas('assignments', fn (Builder $assignments) => $assignments->where('technician_id', $technicianId));
+    }
+
+    /** Complaints the Technician held an Assignment on before it was reassigned to someone else: their read-only history. */
+    public function scopeReassignedAwayFrom(Builder $query, int $technicianId): void
+    {
+        $query->everAssignedTo($technicianId)->whereNot(fn (Builder $latest) => $latest->latestAssignmentHeldBy($technicianId));
     }
 
     /**
@@ -203,10 +216,17 @@ class Complaint extends Model
         return $user->hasRole(Role::Technician) && $this->latestAssignment()?->technician?->isProfileOf($user) === true;
     }
 
-    /** Whether this viewer reads Internal Comments here: the office, or the latest assignee. */
+    /** Whether this viewer reads Internal Comments here: the office, or any Technician who held an Assignment on it (previous ones read-only). */
     public function showsInternalCommentsTo(User $viewer): bool
     {
-        return $viewer->isOffice() || $this->hasLatestAssignee($viewer);
+        return $viewer->isOffice() || $this->hasEverBeenAssignedTo($viewer);
+    }
+
+    /** Whether this account is a Technician who has held any Assignment here, current or ended. */
+    public function hasEverBeenAssignedTo(User $user): bool
+    {
+        return $user->hasRole(Role::Technician) && $user->technician !== null
+            && $this->assignments->contains('technician_id', $user->technician->id);
     }
 
     /** Whether this account is the Technician holding the current Assignment: the one who may act on it. */

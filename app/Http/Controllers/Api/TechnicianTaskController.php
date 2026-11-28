@@ -9,7 +9,10 @@ use App\Models\Complaint;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
-/** A Technician's task list: the Complaints whose latest Assignment is theirs, grouped for their home page. */
+/**
+ * A Technician's task list: the Complaints whose latest Assignment is theirs, grouped for their home page,
+ * and a read-only History of those since reassigned to someone else.
+ */
 class TechnicianTaskController extends Controller
 {
     private const GROUPS = [
@@ -44,6 +47,16 @@ class TechnicianTaskController extends Controller
                 'assigned_at' => $complaint->latestAssignment()->assigned_at->utc()->format('Y-m-d\TH:i:s\Z'),
             ])->all();
         }
+
+        // Work reassigned to someone else: read-only, most recently changed first, dated by their own last Assignment.
+        $groups['history'] = $technician === null ? [] : Complaint::query()->reassignedAwayFrom($technician->id)
+            ->with(['location', 'category', 'assignments'])
+            ->latest('updated_at')->latest('id')->limit(self::COMPLETED_SHOWN)->get()
+            ->map(fn (Complaint $complaint) => [
+                ...(new ComplaintResource($complaint))->toArray($request),
+                'assigned_at' => $complaint->assignments->where('technician_id', $technician->id)->sortBy('id')->last()
+                    ->assigned_at->utc()->format('Y-m-d\TH:i:s\Z'),
+            ])->all();
 
         return response()->json(['data' => $groups]);
     }

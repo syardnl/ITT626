@@ -18,7 +18,8 @@ use RuntimeException;
 /**
  * Local demonstration data only: the sample Location tree, one active account
  * per role plus a second Resident (resident2@demo.test), all with the password
- * "demo-password", a Technician profile and three sample Complaints.
+ * "demo-password", a Technician profile, three sample Complaints still Reported and
+ * one at each later Phase 3 stage (DemoWorkflowSeeder).
  * Run with `php artisan db:seed --class=DemoSeeder`.
  */
 class DemoSeeder extends Seeder
@@ -54,6 +55,7 @@ class DemoSeeder extends Seeder
         $profile->skills()->sync(Skill::whereHas('category', fn ($category) => $category->whereIn('key', ['plumbing', 'electrical']))->pluck('id'));
 
         $this->call(DemoComplaintSeeder::class);
+        $this->call(DemoWorkflowSeeder::class);
     }
 
     private function account(Role $role, string $name, array $attributes = [], ?string $email = null): User

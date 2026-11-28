@@ -9,9 +9,10 @@ const groups: { key: keyof TechnicianTaskGroups; title: string; empty: string }[
     { key: 'in_progress', title: 'In progress', empty: 'Nothing in progress.' },
     { key: 'returned', title: 'Returned', empty: 'Nothing has been sent back to you.' },
     { key: 'completed', title: 'Completed', empty: 'No completed work yet.' },
+    { key: 'history', title: 'Reassigned to others', empty: 'Nothing has been reassigned away from you.' },
 ];
 
-/** A Technician's home page: their task list, most urgent first within each group. */
+/** A Technician's home page: their task list, most urgent first within each group, then work reassigned to others (read-only). */
 export function TechnicianLandingPage() {
     const { account } = useAuth();
     const [tasks, setTasks] = useState<TechnicianTaskGroups | null>(null);

@@ -15,6 +15,7 @@ it('shows the assigned Technician the full Complaint with the reporter’s name 
         ->assertJsonPath('data.description', 'The lift has been stuck on floor 3 since morning.')
         ->assertJsonPath('data.reporter', ['id' => $rina->id, 'name' => 'Rina Resident', 'unit' => ['id' => $unit->id, 'code' => 'A-01-01']])
         ->assertJsonPath('data.assigned_to_you', true)
+        ->assertJsonPath('data.reassigned_from_you', false)
         ->assertJsonMissingPath('data.reporter.email')
         ->assertJsonMissingPath('data.assignment');
 });
@@ -84,18 +85,6 @@ it('refuses comments from a Technician once the Complaint is Closed', function (
     forceStatus($complaint, ComplaintStatus::Closed);
 
     $this->postJson("/api/v1/complaints/{$complaint}/comments", ['body' => 'Late note.'])->assertConflict();
-});
-
-it('conceals the Complaint, its photos and comments from a Technician reassigned away (read-only history comes later)', function () {
-    ['complaint' => $complaint, 'manager' => $manager, 'tariq' => $tariq, 'una' => $una] = technicianWorkSetup();
-    $this->actingAs($manager);
-    assign($complaint, ['technician_id' => $una['id'], 'reason' => 'Tariq is off sick.'])->assertOk();
-
-    $this->actingAs($tariq['user']);
-    $this->getJson("/api/v1/complaints/{$complaint}")->assertNotFound();
-    $this->postJson("/api/v1/complaints/{$complaint}/comments", ['body' => 'Still here?'])->assertNotFound();
-    $this->actingAs($una['user']);
-    $this->getJson("/api/v1/complaints/{$complaint}")->assertOk()->assertJsonPath('data.assigned_to_you', true)->assertJsonPath('data.can_start_work', true);
 });
 
 it('shows the reporter no start time', function () {

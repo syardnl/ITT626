@@ -12,6 +12,13 @@ interface Props {
 export function TechnicianWorkPanel({ complaint, onChanged }: Props) {
     const [busy, setBusy] = useState(false);
     const [error, setError] = useState<ApiError | null>(null);
+    if (complaint.reassigned_from_you) {
+        return (
+            <Alert kind="warning">
+                This work was reassigned to another Technician. You can still read it and your own repair records, but you cannot act on it or comment.
+            </Alert>
+        );
+    }
     if (!complaint.assigned_to_you) return null;
     const startable = complaint.can_start_work === true;
 

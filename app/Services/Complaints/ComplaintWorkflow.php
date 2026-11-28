@@ -17,6 +17,7 @@ use App\Services\Assignments\AssignmentDetails;
 use App\Services\Audit\AuditTrail;
 use Carbon\CarbonInterface;
 use Closure;
+use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
@@ -119,8 +120,7 @@ class ComplaintWorkflow
     public function startWork(User $technician, int $complaintId, ?int $version): Complaint
     {
         return $this->act($technician, $complaintId, $version, ComplaintStatus::STARTABLE, function (Complaint $complaint) use ($technician) {
-            // act() found it through visibleTo, so the latest Assignment is theirs; a startable status is
-            // not Closed, so that Assignment has not ended. A reassignment meanwhile answers 404 there.
+            $this->ensureCurrentAssignee($complaint, $technician);
             $assignment = $complaint->currentAssignment;
             $assignment->started_at ??= now();
             $assignment->save();
@@ -154,7 +154,8 @@ class ComplaintWorkflow
                 $this->photos->discard($written);   // a retried attempt starts clean
                 $written = [];
 
-                $assignment = $complaint->currentAssignment;   // theirs: see startWork
+                $this->ensureCurrentAssignee($complaint, $technician);
+                $assignment = $complaint->currentAssignment;
                 $record = $complaint->maintenanceRecords()->create([
                     'assignment_id' => $assignment->id,
                     'technician_id' => $assignment->technician_id,
@@ -378,6 +379,17 @@ class ComplaintWorkflow
 
             return $complaint;
         }, attempts: 3);   // two reassignments in opposite directions can deadlock; InnoDB rolls one back and it is retried
+    }
+
+    /**
+     * Checked under the lock: a previous assignee can still open the Complaint (read-only history),
+     * so a reassignment made after their request was checked must still refuse them.
+     */
+    private function ensureCurrentAssignee(Complaint $complaint, User $technician): void
+    {
+        if (! $complaint->isAssignedTo($technician)) {
+            throw new AuthorizationException('This Complaint has been reassigned to another Technician.');
+        }
     }
 
     /** Saves the new status (and any timestamps), bumps the version and appends the history row. */

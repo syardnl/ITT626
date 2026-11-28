@@ -70,7 +70,7 @@ it('refuses a Technician who was reassigned away', function () {
     assign($complaint, ['technician_id' => $una['id'], 'reason' => 'Tariq is off sick.'])->assertOk();
 
     $this->actingAs($tariq['user']);
-    startWork($complaint, 1)->assertNotFound();
+    startWork($complaint, loadedVersion($complaint))->assertForbidden();
 });
 
 it('lets only Technicians start work', function (Role $role) {

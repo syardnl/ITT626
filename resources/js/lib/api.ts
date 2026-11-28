@@ -433,6 +433,8 @@ export interface ComplaintDetail extends Complaint {
     started_at?: string | null;
     /** Technicians only: whether they hold the current Assignment, so may comment. */
     assigned_to_you?: boolean;
+    /** A Technician whose Assignment was reassigned to someone else: read-only history. */
+    reassigned_from_you?: boolean;
     /** Technicians only: theirs, and Assigned or Returned. */
     can_start_work?: boolean;
     /** Technicians only: theirs, and In Progress. */
@@ -481,7 +483,7 @@ export interface TechnicianTask extends Complaint {
 }
 
 /** GET /technician/tasks: New (Assigned), In progress, Returned and Completed. */
-export type TechnicianTaskGroups = Record<'new' | 'in_progress' | 'returned' | 'completed', TechnicianTask[]>;
+export type TechnicianTaskGroups = Record<'new' | 'in_progress' | 'returned' | 'completed' | 'history', TechnicianTask[]>;
 
 /** A Maintenance Record as the reporter sees it once the Complaint is Resolved: what was repaired, and its photos. */
 export interface MaintenanceRecordSummary {

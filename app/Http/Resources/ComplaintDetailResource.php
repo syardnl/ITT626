@@ -86,6 +86,8 @@ class ComplaintDetailResource extends ComplaintResource
             'started_at' => $this->when($request->user()->isStaff(), fn () => $this->latestAssignment()?->started_at?->utc()->format('Y-m-d\TH:i:s\Z')),
             // A Technician's own Complaint: they may comment while it is theirs, and start work when ComplaintStatus::STARTABLE.
             'assigned_to_you' => $this->when($request->user()->hasRole(Role::Technician), fn () => $this->isAssignedTo($request->user())),
+            // A previous assignee: the work moved to someone else, so this is read-only history.
+            'reassigned_from_you' => $this->when($request->user()->hasRole(Role::Technician), fn () => ! $this->hasLatestAssignee($request->user())),
             'maintenance_records' => $this->maintenanceRecordsFor($request->user()),
             'can_complete_work' => $this->when($request->user()->hasRole(Role::Technician), fn () => $this->isAssignedTo($request->user())
                 && $this->status === ComplaintStatus::InProgress),

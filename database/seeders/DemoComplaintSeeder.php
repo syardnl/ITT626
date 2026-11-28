@@ -4,15 +4,12 @@ namespace Database\Seeders;
 
 use App\Enums\AffectedUnits;
 use App\Enums\Urgency;
-use App\Models\Category;
 use App\Models\Complaint;
-use App\Models\Location;
 use App\Models\User;
 use App\Services\Complaints\ComplaintIntake;
 use App\Services\Complaints\Following;
-use BackedEnum;
+use Database\Seeders\Concerns\SubmitsSampleComplaints;
 use Illuminate\Database\Seeder;
-use Illuminate\Http\UploadedFile;
 
 /**
  * Three sample Complaints for the demo, each with a photo, submitted through ComplaintIntake like a
@@ -22,6 +19,8 @@ use Illuminate\Http\UploadedFile;
  */
 class DemoComplaintSeeder extends Seeder
 {
+    use SubmitsSampleComplaints;
+
     public function run(ComplaintIntake $intake, Following $following): void
     {
         $reporter = User::where('email', 'resident@demo.test')->firstOrFail();
@@ -48,44 +47,5 @@ class DemoComplaintSeeder extends Seeder
             'description' => 'The pool water turned green over the weekend and the filter seems to be off. Nobody can swim in it.',
             'urgency' => Urgency::Low, 'safety_risk' => false, 'affected_units' => AffectedUnits::Many, 'essential_service_down' => false,
         ], [22, 163, 74]);
-    }
-
-    /**
-     * @param  array<string, mixed>  $answers
-     * @param  array{int, int, int}  $colour  the sample photo's colour, so the three are easy to tell apart
-     */
-    private function submit(ComplaintIntake $intake, User $reporter, string $key, string $locationCode, string $categoryKey, array $answers, array $colour): Complaint
-    {
-        $answers = [
-            ...array_map(fn ($value) => $value instanceof BackedEnum ? $value->value : $value, $answers),
-            'location_id' => Location::where('code', $locationCode)->firstOrFail()->id,
-            'category_id' => Category::where('key', $categoryKey)->firstOrFail()->id,
-        ];
-
-        $photo = $this->samplePhoto($answers['title'], $colour);
-        try {
-            return $intake->submit($reporter, $answers, [$photo], $key);
-        } finally {
-            @unlink($photo->getRealPath());   // the intake has stored its own re-encoded copy
-        }
-    }
-
-    /** A plain coloured 1200×900 JPEG captioned with the Complaint's title: a stand-in for a phone photo. */
-    private function samplePhoto(string $caption, array $colour): UploadedFile
-    {
-        $image = imagecreatetruecolor(1200, 900);
-        imagefill($image, 0, 0, imagecolorallocate($image, ...$colour));
-
-        // GD's built-in font is tiny: write the caption small, then scale it up onto the photo.
-        $label = imagecreatetruecolor(300, 30);
-        imagefill($label, 0, 0, imagecolorallocate($label, ...$colour));
-        imagestring($label, 5, 6, 7, 'SAMPLE PHOTO', imagecolorallocate($label, 255, 255, 255));
-        imagecopyresized($image, $label, 0, 60, 0, 0, 1200, 120, 300, 30);
-        imagestring($image, 5, 40, 820, $caption, imagecolorallocate($image, 255, 255, 255));
-
-        $path = tempnam(sys_get_temp_dir(), 'demo-photo');
-        imagejpeg($image, $path, 85);
-
-        return new UploadedFile($path, 'sample.jpg', 'image/jpeg', null, test: true);
     }
 }

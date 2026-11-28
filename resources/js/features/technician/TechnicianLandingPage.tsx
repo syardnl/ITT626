@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router';
 import { Alert } from '../../components/Alert';
+import { SlaBadge } from '../../components/SlaBadge';
 import { api, complaintStatusLabel, formatDateTime, priorityLabel, toApiError, type TechnicianTask, type TechnicianTaskGroups } from '../../lib/api';
 import { useAuth } from '../../lib/auth';
 
@@ -59,6 +60,7 @@ function TaskList({ tasks }: { tasks: TechnicianTask[] }) {
                         <p className="mt-1 text-sm text-slate-600">
                             {task.reference_no} · {complaintStatusLabel[task.status]} · assigned {formatDateTime(task.assigned_at)}
                         </p>
+                        {task.sla_status && <p className="mt-2"><SlaBadge status={task.sla_status} /></p>}
                     </Link>
                 </li>
             ))}

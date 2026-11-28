@@ -3,8 +3,11 @@
 namespace App\Models;
 
 use App\Enums\Priority;
+use App\Enums\SlaState;
+use Carbon\CarbonInterface;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 /**
  * One attempt to resolve a Complaint. Only a Resident Return starts a new one (ADR 0005). It keeps
@@ -31,6 +34,36 @@ class RepairCycle extends Model
     public function complaint(): BelongsTo
     {
         return $this->belongsTo(Complaint::class);
+    }
+
+    public function breaches(): HasMany
+    {
+        return $this->hasMany(SlaBreach::class)->orderBy('due_at')->orderBy('id');
+    }
+
+    /**
+     * The SLA Indicator at $now, from the loaded `breaches`: Breached once a breach is recorded or
+     * a deadline has passed with its milestone still missing (so it shows before the check runs);
+     * Due soon when less than 20% of the next deadline's target time is left; otherwise On track.
+     * `due_at` is the next deadline still to meet, or null when none is left.
+     *
+     * @return array{state: SlaState, due_at: ?CarbonInterface}
+     */
+    public function indicator(CarbonInterface $now): array
+    {
+        $pending = array_values(array_filter([
+            $this->hasResponse() && $this->responded_at === null ? $this->response_due_at : null,
+            $this->resolved_at === null ? $this->resolution_due_at : null,
+        ]));
+        $next = $pending[0] ?? null;
+
+        $state = match (true) {
+            $this->breaches->isNotEmpty() || collect($pending)->contains(fn (CarbonInterface $due) => $due->lt($now)) => SlaState::Breached,
+            $next !== null && $now->diffInSeconds($next) < SlaState::DUE_SOON_SHARE * $this->started_at->diffInSeconds($next) => SlaState::DueSoon,
+            default => SlaState::OnTrack,
+        };
+
+        return ['state' => $state, 'due_at' => $next];
     }
 
     public function hasResponse(): bool

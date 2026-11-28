@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link, useLocation, useNavigate, useParams } from 'react-router';
 import { Alert } from '../../components/Alert';
+import { SlaBadge } from '../../components/SlaBadge';
 import {
     affectedUnitsLabel, api, categoryName, complaintStatusLabel, formatDateTime, isFullComplaint, priorityLabel, setFollowing, toApiError, urgencyLabel,
     type ComplaintDetail, type ComplaintSummary,
@@ -47,6 +48,7 @@ export function ComplaintDetailPage() {
                     <span className="font-medium">{complaintStatusLabel[complaint.status]}</span> · {priorityLabel[complaint.priority]} priority
                     {complaint.safety_risk && <span className="ml-2 rounded bg-red-100 px-2 py-0.5 text-sm font-medium text-red-800">Safety risk</span>}
                 </p>
+                {complaint.sla_status && <p className="mt-2"><SlaBadge status={complaint.sla_status} /></p>}
             </header>
 
             <dl className="grid gap-3 rounded-md border border-slate-200 bg-white p-4 sm:grid-cols-2">

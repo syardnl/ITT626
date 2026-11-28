@@ -46,6 +46,15 @@ function CycleCard({ cycle }: { cycle: RepairCycle }) {
                 {cycle.response_due_at && <Milestone label="Response" due={cycle.response_due_at} done={cycle.responded_at} />}
                 {cycle.resolution_due_at && <Milestone label="Resolution" due={cycle.resolution_due_at} done={cycle.resolved_at} />}
             </dl>
+            {cycle.breaches.length > 0 && (
+                <ul className="mt-2 space-y-1 text-sm">
+                    {cycle.breaches.map((breach) => (
+                        <li key={breach.type} className="font-medium text-red-800">
+                            ⚠ {breach.type === 'response' ? 'Response' : 'Resolution'} target breached (due {formatDateTime(breach.due_at)}, recorded {formatDateTime(breach.detected_at)})
+                        </li>
+                    ))}
+                </ul>
+            )}
         </li>
     );
 }

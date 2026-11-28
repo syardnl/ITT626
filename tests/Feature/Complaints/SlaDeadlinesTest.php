@@ -52,6 +52,7 @@ it('gives Repair Cycle 1 Response and Resolution deadlines from when it was repo
         'sla_target' => ['response_minutes' => 4320, 'resolution_minutes' => 10080, 'version' => 1],
         'response_due_at' => reportedPlus(4320), 'responded_at' => null,
         'resolution_due_at' => reportedPlus(10080), 'resolved_at' => null,
+        'breaches' => [],
     ]]);
 });
 

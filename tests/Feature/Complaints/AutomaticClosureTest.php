@@ -1,6 +1,7 @@
 <?php
 
 use App\Enums\Role;
+use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Storage;
 
 require_once __DIR__.'/helpers.php';
@@ -66,5 +67,8 @@ it('leaves alone Complaints that were answered or are not Resolved', function ()
 });
 
 it('runs every hour', function () {
-    $this->artisan('schedule:list')->expectsOutputToContain('0 * * * *  php artisan complaints:close-resolved')->assertSuccessful();
+    Artisan::call('schedule:list');
+
+    // Column widths depend on the other scheduled commands, so any run of spaces is accepted.
+    expect(Artisan::output())->toMatch('/^\s*0\s+\*\s+\*\s+\*\s+\*\s+php artisan complaints:close-resolved/m');
 });

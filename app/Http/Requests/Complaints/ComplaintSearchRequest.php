@@ -35,6 +35,7 @@ class ComplaintSearchRequest extends FormRequest
             'block' => ['sometimes', 'integer', Rule::exists('locations', 'id')->where('type', LocationType::Block->value)],
             'location' => ['sometimes', 'integer', Rule::exists('locations', 'id')],
             'safety_risk' => ['sometimes', 'boolean'],
+            'sla' => ['sometimes', Rule::in(['breached'])],
             'sort' => $this->sortRule(),
             'per_page' => ['sometimes', 'integer', 'between:1,100'],
         ];

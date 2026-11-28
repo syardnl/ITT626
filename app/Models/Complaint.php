@@ -7,7 +7,9 @@ use App\Enums\ComplaintStatus;
 use App\Enums\LocationType;
 use App\Enums\Priority;
 use App\Enums\Role;
+use App\Enums\SlaState;
 use App\Enums\Urgency;
+use Carbon\CarbonInterface;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -68,6 +70,33 @@ class Complaint extends Model
     public function repairCycles(): HasMany
     {
         return $this->hasMany(RepairCycle::class)->orderBy('number');
+    }
+
+    /** The latest Repair Cycle: the one whose SLA clock runs now. */
+    public function currentCycle(): HasOne
+    {
+        return $this->hasOne(RepairCycle::class)->ofMany('number', 'max');
+    }
+
+    /**
+     * The SLA Indicator for a list or detail page, from the loaded `currentCycle.breaches`; null
+     * once the Complaint is Resolved or Closed (its breaches stay on the detail page).
+     *
+     * @return ?array{state: SlaState, due_at: ?CarbonInterface}
+     */
+    public function slaIndicator(): ?array
+    {
+        return $this->status->isOpen() && $this->currentCycle ? $this->currentCycle->indicator(now()) : null;
+    }
+
+    /** Open, with its current cycle Breached as RepairCycle::indicator decides: a recorded breach or a deadline passed unmet. */
+    public function scopeSlaBreached(Builder $query): void
+    {
+        $now = now();
+        $query->open()->whereHas('currentCycle', fn (Builder $cycle) => $cycle->where(fn (Builder $breached) => $breached
+            ->whereHas('breaches')
+            ->orWhere(fn (Builder $response) => $response->where('number', 1)->whereNull('responded_at')->where('response_due_at', '<', $now))
+            ->orWhere(fn (Builder $resolution) => $resolution->whereNull('resolved_at')->where('resolution_due_at', '<', $now))));
     }
 
     public function classificationChanges(): HasMany

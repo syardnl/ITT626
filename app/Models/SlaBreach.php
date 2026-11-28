@@ -11,7 +11,7 @@ class SlaBreach extends Model
 {
     protected function casts(): array
     {
-        return ['type' => SlaBreachType::class, 'due_at' => 'datetime', 'detected_at' => 'datetime'];
+        return ['type' => SlaBreachType::class, 'due_at' => 'datetime', 'detected_at' => 'datetime', 'notified_at' => 'datetime'];
     }
 
     public function complaint(): BelongsTo

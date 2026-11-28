@@ -10,7 +10,9 @@ it('starts Repair Cycle 1 when a Complaint is submitted, shown to the office', f
 
     $this->actingAs(account(Role::Manager));
     $this->getJson("/api/v1/complaints/{$complaint['id']}")->assertOk()
-        ->assertJsonPath('data.repair_cycles', [['number' => 1, 'started_at' => $complaint['created_at']]]);
+        ->assertJsonCount(1, 'data.repair_cycles')
+        ->assertJsonPath('data.repair_cycles.0.number', 1)
+        ->assertJsonPath('data.repair_cycles.0.started_at', $complaint['created_at']);
 });
 
 it('keeps the same Repair Cycle through review and classification', function () {

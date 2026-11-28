@@ -14,6 +14,7 @@ use App\Models\MaintenanceRecord;
 use App\Models\RepairCycle;
 use App\Models\StatusChange;
 use App\Models\User;
+use Carbon\CarbonInterface;
 use Illuminate\Http\Request;
 
 /**
@@ -76,10 +77,18 @@ class ComplaintDetailResource extends ComplaintResource
                 'uploaded_by' => ['id' => $photo->uploader->id, 'name' => $photo->uploader->name],
                 'url' => "/api/v1/attachments/{$photo->id}",
             ])->all(),
+            // The office: every Repair Cycle with the Target it applies, its deadlines and milestones.
             'repair_cycles' => $this->when($request->user()->isOffice(), fn () => $this->repairCycles->map(fn (RepairCycle $cycle) => [
                 'number' => $cycle->number,
-                'started_at' => $cycle->started_at->utc()->format('Y-m-d\TH:i:s\Z'),
+                'started_at' => self::time($cycle->started_at),
+                'sla_target' => $cycle->targetFor($this->priority),
+                'response_due_at' => self::time($cycle->response_due_at),
+                'responded_at' => self::time($cycle->responded_at),
+                'resolution_due_at' => self::time($cycle->resolution_due_at),
+                'resolved_at' => self::time($cycle->resolved_at),
             ])->all()),
+            // Everyone who sees the Complaint in full: the current cycle's deadlines.
+            'sla' => $this->currentSla(),
             // The office sees whose work it is now; a Technician gets assigned_to_you instead.
             'assignment' => $this->when($request->user()->isOffice(), fn () => $this->currentAssignmentEntry()),
             // Staff only: when the Technician first started the latest Assignment's work.
@@ -131,6 +140,22 @@ class ComplaintDetailResource extends ComplaintResource
                 'photo_ids' => $record->photos->pluck('id')->all(),
                 'submitted_at' => $record->submitted_at->utc()->format('Y-m-d\TH:i:s\Z'),
             ])->all();
+    }
+
+    private function currentSla(): ?array
+    {
+        $cycle = $this->repairCycles->sortBy('number')->last();
+
+        return $cycle ? [
+            'repair_cycle' => $cycle->number,
+            'response_due_at' => self::time($cycle->response_due_at),
+            'resolution_due_at' => self::time($cycle->resolution_due_at),
+        ] : null;
+    }
+
+    private static function time(?CarbonInterface $at): ?string
+    {
+        return $at?->utc()->format('Y-m-d\TH:i:s\Z');
     }
 
     private function currentAssignmentEntry(): ?array

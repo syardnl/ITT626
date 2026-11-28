@@ -11,6 +11,7 @@ import { ConfirmResolutionPanel, RatingGiven } from './ConfirmResolutionPanel';
 import { AssignmentPanel } from './AssignmentPanel';
 import { MaintenanceRecords } from './MaintenanceRecords';
 import { ReviewPanel } from './ReviewPanel';
+import { SlaDeadlines } from './SlaDeadlines';
 import { TechnicianWorkPanel } from './TechnicianWorkPanel';
 import { VerifyWorkPanel } from './VerifyWorkPanel';
 
@@ -65,6 +66,8 @@ export function ComplaintDetailPage() {
                     </div>
                 )}
             </dl>
+
+            <SlaDeadlines complaint={complaint} />
 
             {account?.role === 'manager' && (
                 <>

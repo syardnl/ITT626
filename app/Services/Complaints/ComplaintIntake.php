@@ -11,6 +11,7 @@ use App\Models\ComplaintSubmissionKey;
 use App\Models\Location;
 use App\Models\User;
 use App\Services\Audit\AuditTrail;
+use App\Services\Sla\SlaClock;
 use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
@@ -24,6 +25,7 @@ class ComplaintIntake
         private readonly ReferenceNumbers $references,
         private readonly AuditTrail $audit,
         private readonly EvidencePhotos $photos,
+        private readonly SlaClock $sla,
     ) {}
 
     /**
@@ -99,7 +101,7 @@ class ComplaintIntake
             ]);
 
             $complaint->statusHistory()->create(['changed_by' => $reporter->id, 'to_status' => ComplaintStatus::Reported]);
-            $complaint->repairCycles()->create(['number' => 1, 'started_at' => $complaint->created_at]);
+            $this->sla->startCycle($complaint, 1, $complaint->created_at);
             $this->photos->store($complaint, $reporter, $photos, $written);
             if ($key !== null) {
                 ComplaintSubmissionKey::create(['user_id' => $reporter->id, 'key' => $key, 'complaint_id' => $complaint->id]);

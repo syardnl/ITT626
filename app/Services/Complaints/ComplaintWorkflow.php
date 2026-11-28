@@ -15,6 +15,7 @@ use App\Models\Technician;
 use App\Models\User;
 use App\Services\Assignments\AssignmentDetails;
 use App\Services\Audit\AuditTrail;
+use App\Services\Sla\SlaClock;
 use Carbon\CarbonInterface;
 use Closure;
 use Illuminate\Auth\Access\AuthorizationException;
@@ -30,13 +31,15 @@ use Throwable;
  */
 class ComplaintWorkflow
 {
-    public function __construct(private readonly AuditTrail $audit, private readonly EvidencePhotos $photos) {}
+    public function __construct(private readonly AuditTrail $audit, private readonly EvidencePhotos $photos, private readonly SlaClock $sla) {}
 
     /** Reported → Under Review; the review time is the Response (design §5). */
     public function beginReview(User $manager, int $complaintId, ?int $version): Complaint
     {
         return $this->act($manager, $complaintId, $version, [ComplaintStatus::Reported], function (Complaint $complaint) use ($manager) {
-            $this->moveTo($complaint, ComplaintStatus::UnderReview, $manager, ['reviewed_at' => now()]);
+            $now = now();
+            $this->moveTo($complaint, ComplaintStatus::UnderReview, $manager, ['reviewed_at' => $now], at: $now);
+            $this->sla->recordResponse($complaint, $now);
             $this->audit->recordChange(AuditAction::Reviewed, $complaint);
         });
     }
@@ -55,6 +58,9 @@ class ComplaintWorkflow
                 'reason' => $reason,
             ];
             $complaint->forceFill(['category_id' => $category->id, 'priority' => $priority, 'version' => $complaint->version + 1])->save();
+            if ($change['from_priority'] !== $priority) {
+                $this->sla->recalculate($complaint);   // from the cycle's start, so an upgrade can be breached at once
+            }
             $complaint->classificationChanges()->create($change);
             $this->audit->recordChange(AuditAction::Classified, $complaint, metadata: $reason === null ? [] : ['reason' => $reason]);
         }, fn (Complaint $complaint) => self::classificationRefusal($complaint->status));
@@ -216,6 +222,9 @@ class ComplaintWorkflow
 
             // The reason stays off the status row, which the reporter reads; staff see it as a verification entry.
             $this->moveTo($complaint, $decision->status(), $manager, $decision === VerificationDecision::Approve ? ['resolved_at' => $now] : [], at: $now);
+            if ($decision === VerificationDecision::Approve) {
+                $this->sla->recordResolution($complaint, $now);   // a Manager Rejection keeps the cycle and its deadline
+            }
             $this->audit->recordChange($decision->auditAction(), $complaint, metadata: array_filter([
                 'maintenance_record_id' => $record->id,
                 'reason' => $reason,
@@ -241,7 +250,8 @@ class ComplaintWorkflow
             }
 
             $now = now();
-            $cycle = $complaint->repairCycles()->create(['number' => $complaint->repairCycles()->max('number') + 1, 'started_at' => $now]);
+            // A fresh Resolution deadline from now at the current Priority (ADR 0005).
+            $cycle = $this->sla->startCycle($complaint, $complaint->repairCycles()->max('number') + 1, $now);
             // resolved_at keeps the last Resolution (Phase 4 measures it); the next approval sets it again.
             $this->moveTo($complaint, ComplaintStatus::Returned, $resident, [], $answer->reason, at: $now);
             $this->audit->recordChange(AuditAction::ResidentReturned, $complaint, metadata: [

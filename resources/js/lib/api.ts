@@ -426,7 +426,9 @@ export interface ComplaintDetail extends Complaint {
     /** Status changes and the comments this viewer may read, oldest first. */
     timeline: TimelineEntry[];
     /** Office only. Cycle 1 starts at submission; each Resident Return starts another. */
-    repair_cycles?: { number: number; started_at: string }[];
+    repair_cycles?: RepairCycle[];
+    /** The current Repair Cycle's deadlines; a Response deadline only in cycle 1. */
+    sla: { repair_cycle: number; response_due_at: string | null; resolution_due_at: string | null } | null;
     /** Office only: whose work it is now; null before the first Assignment. */
     assignment?: CurrentAssignment | null;
     /** Staff only: when the Technician first started the work; null until then. */
@@ -515,3 +517,20 @@ export function isStaffRecord(record: MaintenanceRecord | MaintenanceRecordSumma
 }
 
 export const photoTypeLabel: Record<EvidencePhoto['type'], string> = { report_photo: 'Report', before_photo: 'Before', after_photo: 'After' };
+
+export interface SlaTargetSnapshot {
+    response_minutes: number;
+    resolution_minutes: number;
+    version: number;
+}
+
+/** One Repair Cycle with the SLA Target it started with, its deadlines and milestones (design §6.3). */
+export interface RepairCycle {
+    number: number;
+    started_at: string;
+    sla_target: SlaTargetSnapshot | null;
+    response_due_at: string | null;
+    responded_at: string | null;
+    resolution_due_at: string | null;
+    resolved_at: string | null;
+}
